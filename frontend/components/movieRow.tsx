@@ -1,0 +1,49 @@
+import React from 'react';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { Movie } from '../types';
+import MovieCard from './movieCard';
+import { COLORS } from '../constants/colors';
+
+interface MovieRowProps {
+  category: {
+    title: string;
+    movies: Movie[];
+  };
+  onMoviePress: (movie: Movie) => void;
+}
+
+const MovieRow: React.FC<MovieRowProps> = ({ category, onMoviePress }) => {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>{category.title}</Text>
+      <FlatList
+        data={category.movies}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <MovieCard movie={item} onPress={() => onMoviePress(item)} />
+        )}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 25,
+  },
+  title: {
+    color: COLORS.textPrimary,
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 15,
+    marginBottom: 15,
+  },
+  listContent: {
+    paddingLeft: 15,
+  },
+});
+
+export default MovieRow;    
