@@ -27,13 +27,13 @@ export default function EditProfilePage() {
         <AppTextInput 
             label="Nome" 
             placeholder="Seu nome" 
-            defaultValue="Andressa" 
+            defaultValue="Usuário" 
         />
         <AppTextInput 
             label="Email" 
             placeholder="seuemail@exemplo.com" 
             keyboardType="email-address"
-            defaultValue="andressa@email.com"
+            defaultValue="usuario@email.com"
         />
         <AppTextInput 
             label="Nova Senha" 

@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../constants/colors';
-import { Movie } from '../../types';
-import { getHomeData, Category } from '../../services/movieService';
+import { Movie, Category } from '../../types';
+import { getHomeData } from '../../services/movieService';
 import MovieRow from '../../components/movieRow';
 
 export default function HomePage() {

@@ -5,6 +5,13 @@ export interface Movie {
   poster: string;
   year?: string;
   duration?: string;
-  genre?: string;
+  genres?: string[];
   synopsis?: string;
+  director?: string;
+  actors?: string[];
 }
+export interface Category {
+  id: string;
+  title: string;
+  movies: Movie[];
+} 

@@ -1,6 +1,6 @@
-# APP
+# Filmoteca
 
-**APP** é um aplicativo mobile desenvolvido para oferecer uma experiência personalizada de gerenciamento de filmes, integrado à API do IMDb.  
+**Filmoteca** é um aplicativo mobile desenvolvido para oferecer uma experiência personalizada de gerenciamento de filmes, integrado à API do IMDb.  
 O objetivo é permitir que usuários pesquisem filmes, organizem suas listas de desejos, marquem conteúdos já assistidos e mantenham anotações pessoais, tudo em um só lugar.
 
 ---

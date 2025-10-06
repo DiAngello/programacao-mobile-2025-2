@@ -1,18 +1,19 @@
 import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { Movie } from '../types';
+import { Movie, Category } from '../types';
 import MovieCard from './movieCard';
 import { COLORS } from '../constants/colors';
 
 interface MovieRowProps {
-  category: {
-    title: string;
-    movies: Movie[];
-  };
+  category: Category;
   onMoviePress: (movie: Movie) => void;
 }
 
 const MovieRow: React.FC<MovieRowProps> = ({ category, onMoviePress }) => {
+  if (!category.movies || category.movies.length === 0) {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{category.title}</Text>
@@ -46,4 +47,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MovieRow;    
+export default MovieRow;
