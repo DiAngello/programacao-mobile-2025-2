@@ -8,7 +8,7 @@ export default function WelcomeScreen() {
   return (
     <View style={styles.container}>
       <Ionicons name="film-outline" size={80} color={COLORS.primary} />
-      <Text style={styles.title}>Bem-vindo ao !</Text>
+      <Text style={styles.title}>Bem-vindo ao Filmoteca!</Text>
       <Text style={styles.subtitle}>Sua coleção de filmes, organizada.</Text>
       <Link href="/login" asChild>
         <TouchableOpacity style={styles.button}>
