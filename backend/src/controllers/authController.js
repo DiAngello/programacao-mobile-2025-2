@@ -1,5 +1,5 @@
 const { User } = require('../models');
-const jwt = 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 
 /**

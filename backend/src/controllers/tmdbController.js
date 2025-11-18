@@ -1,26 +1,33 @@
 const axios = require('axios');
 
-// Cria uma instância 'axios' pré-configurada para a API TMDb
 const tmdbApi = axios.create({
   baseURL: 'https://api.themoviedb.org/3',
   params: {
     api_key: process.env.TMDB_API_KEY,
-    language: 'pt-BR' // Traz resultados em português
+    language: 'pt-BR'
   }
 });
 
-/**
- * Controlador para buscar dados de descoberta de filmes (Populares, Gêneros) na TMDb.
- */
+const fetchTMDbDetails = async (tmdb_id) => {
+  const response = await tmdbApi.get(`/movie/${tmdb_id}`, {
+    params: { append_to_response: 'external_ids,credits' } 
+  });
+  return mapMovieData(response.data);
+};
+
+const mapMovieData = (apiMovie) => {
+  return {
+    ...apiMovie,
+    poster: `https://image.tmdb.org/t/p/w500${apiMovie.poster_path}`,
+    synopsis: apiMovie.overview,
+    rating: apiMovie.vote_average?.toFixed(1) || 'N/A',
+  };
+};
 class TmdbController {
 
-  /**
-   * Busca os filmes atualmente populares no TMDb.
-   */
   // Rota: GET /api/movies/popular
   async getPopular(req, res) {
     try {
-      // Busca o endpoint '/movie/popular'
       const response = await tmdbApi.get('/movie/popular');
       return res.json(response.data.results);
     } catch (error) {
@@ -28,16 +35,12 @@ class TmdbController {
     }
   }
 
-  /**
-   * Procura filmes no TMDb com base em um termo de pesquisa (query).
-   */
-  // Rota: GET /api/movies/search_tmdb?q=...
+  // Rota: GET /api/movies/search_tmdb?query=..
   async search(req, res) {
-    const { q } = req.query;
+    const { query } = req.query; 
     try {
-      // Busca no endpoint '/search/movie' usando a query 'q'
       const response = await tmdbApi.get('/search/movie', {
-        params: { query: q }
+        params: { query }
       });
       return res.json(response.data.results);
     } catch (error) {
@@ -45,14 +48,10 @@ class TmdbController {
     }
   }
 
-  /**
-   * Busca os detalhes completos de um filme, incluindo o 'imdb_id' (via external_ids).
-   */
   // Rota: GET /api/movies/details/:tmdb_id
   async getDetails(req, res) {
     const { tmdb_id } = req.params;
     try {
-      // Busca o filme e solicita 'external_ids' (para obter o imdb_id)
       const response = await tmdbApi.get(`/movie/${tmdb_id}`, {
         params: { append_to_response: 'external_ids' }
       });
@@ -62,38 +61,28 @@ class TmdbController {
     }
   }
 
-  /**
-   * Obtém a lista oficial de todos os gêneros (categorias) da TMDb.
-   */
   // Rota: GET /api/movies/genres
   async getGenres(req, res) {
     try {
-      // Busca no endpoint '/genre/movie/list'
       const response = await tmdbApi.get('/genre/movie/list');
-      // A resposta vem em { genres: [...] }
       return res.json(response.data.genres); 
     } catch (error) {
       return res.status(502).json({ error: 'Erro ao buscar gêneros no TMDb.' });
     }
   }
 
-  /**
-   * Descobre filmes populares filtrados por um ID de gênero específico.
-   */
   // Rota: GET /api/movies/discover?genreId=28
   async discoverByGenre(req, res) {
     const { genreId } = req.query;
-    // Valida se o ID do gênero foi enviado
     if (!genreId) {
       return res.status(400).json({ error: 'O parâmetro genreId é obrigatório.' });
     }
     
     try {
-      // Busca no endpoint '/discover/movie' filtrando por 'with_genres'
       const response = await tmdbApi.get('/discover/movie', {
         params: {
           with_genres: genreId,
-          sort_by: 'popularity.desc' // Opcional: ordenar por popularidade
+          sort_by: 'popularity.desc'
         }
       });
       return res.json(response.data.results);
@@ -101,7 +90,24 @@ class TmdbController {
       return res.status(502).json({ error: 'Erro ao descobrir filmes por gênero.' });
     }
   }
+   async getByImdbId(req, res) {
+    const { imdb_id } = req.params;
+
+    try {
+      const findResponse = await tmdbApi.get(`/find/${imdb_id}`, {
+        params: { external_source: 'imdb_id' }
+      });
+      const foundMovie = findResponse.data.movie_results[0];
+      if (!foundMovie || !foundMovie.id) {
+        return res.status(404).json({ error: 'Filme não encontrado no TMDb (via find).' });
+      }
+      const movieDetails = await fetchTMDbDetails(foundMovie.id);
+      return res.json(movieDetails);
+    } catch (error) {
+      console.error('❌ ERRO em /getByImdbId:', error.message);
+      return res.status(502).json({ error: 'Erro ao buscar filme por IMDb ID.' });
+    }
+  }
 }
 
-// Exporta uma instância do controlador para ser usada nas rotas
 module.exports = new TmdbController();

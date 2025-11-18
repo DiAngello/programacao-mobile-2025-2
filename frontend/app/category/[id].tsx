@@ -1,3 +1,6 @@
+// ATENÇÃO: Renomeie o seu arquivo [name].tsx para [id].tsx
+// A rota agora é baseada no ID do Gênero, não no nome.
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
@@ -8,36 +11,42 @@ import PosterCard from '../../components/posterCard';
 
 export default function CategoryResultsPage() {
   const router = useRouter();
-  const { name } = useLocalSearchParams<{ name: string }>(); 
+  // Lemos o 'id' da rota (ex: /28) e o 'name' da query (ex: ?name=Ação)
+  const { id, name } = useLocalSearchParams<{ id: string, name: string }>(); 
+  
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (name) {
+    // Carrega se o ID (da rota) estiver presente
+    if (id) {
       const loadMovies = async () => {
         setLoading(true);
-        const results = await getMoviesByCategory(name);
+        // Passa o ID para o serviço, não o nome
+        const results = await getMoviesByCategory(id);
         setMovies(results);
         setLoading(false);
       };
       loadMovies();
     }
-  }, [name]);
+  }, [id]);
 
   const handleMoviePress = (movie: Movie) => {
+    // A API do TMDb retorna 'id' (TMDb ID)
     router.push(`/movieDetail?movieId=${movie.id}`);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: name }} />
+      {/* Usa o 'name' (da query) para o título */}
+      <Stack.Screen options={{ title: name || 'Categoria' }} /> 
       
       {loading ? (
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={COLORS.primary} style={styles.centered} />
       ) : (
         <FlatList
           data={movies}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           numColumns={3}
           renderItem={({ item }) => (
             <PosterCard movie={item} onPress={() => handleMoviePress(item)} />
@@ -53,6 +62,7 @@ export default function CategoryResultsPage() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 15, paddingTop: 20 },
   row: { justifyContent: 'space-between' },
   emptyText: { color: COLORS.textSecondary, textAlign: 'center', marginTop: 50, fontSize: 16 },
