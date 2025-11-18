@@ -20,6 +20,8 @@ router.get('/discover', tmdbController.discoverByGenre);
 // Rota GET para pesquisar filmes (TMDb)
 router.get('/search_tmdb', tmdbController.search);
 
+router.get('/imdb/:imdb_id', tmdbController.getByImdbId);
+
 // Rota GET para buscar detalhes de um filme por ID (TMDb)
 router.get('/details/:tmdb_id', tmdbController.getDetails);
 

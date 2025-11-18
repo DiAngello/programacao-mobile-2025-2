@@ -33,3 +33,5 @@ router.post(
 router.get('/me', authMiddleware, authController.getProfile);
 // Rota PUT para atualizar o perfil (protegida pelo authMiddleware).
 router.put('/me', authMiddleware, authController.updateProfile);
+
+module.exports = router;

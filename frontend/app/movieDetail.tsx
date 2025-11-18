@@ -1,63 +1,144 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { 
+  View, Text, StyleSheet, SafeAreaView, Image, 
+  ScrollView, TouchableOpacity, ActivityIndicator, Alert 
+} from 'react-native';
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { Movie } from '../types';
-import { getMovieById } from '../services/movieService';
+// Importa os serviços corretos
+import { 
+  getMovieTMDbDetails, // Busca na API
+  getLibraryEntry,
+  getMovieByIMDbId,     // Busca no nosso BD
+  upsertMovieToLibrary // Salva no nosso BD
+} from '../services/movieService';
 import AppTextInput from '../components/appTextInput';
 import AppButton from '../components/appButton';
 import StarRating from '../components/starRating';
 
+type LibraryStatus = 'watched' | 'wishlist' | 'none';
+
 export default function MovieDetailPage() {
-  const { movieId } = useLocalSearchParams<{ movieId: string }>();
+  const router = useRouter();
+  const { movieId, imdbId } = useLocalSearchParams<{ movieId?: string, imdbId?: string }>();
+
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isWatched, setIsWatched] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Para os botões
+
+  // 'watched', 'wishlist', ou 'none'
+  const [libraryStatus, setLibraryStatus] = useState<LibraryStatus>('none');
+  // TODO: Carregar/Salvar esta informação
   const [userRating, setUserRating] = useState(0);
   const [userComment, setUserComment] = useState('');
 
-  useEffect(() => {
-    if (movieId) {
-      const loadMovieData = async () => {
-        setLoading(true);
-        const movieData = await getMovieById(movieId);
+  // Carrega os dados do filme e o status da biblioteca
+ useEffect(() => {
+    const loadMovieData = async () => {
+      setLoading(true);
+      try {
+        let movieData: Movie | null = null;
+
+        // [CORREÇÃO]: Lógica para carregar por qualquer um dos IDs
+        if (movieId) {
+          // Se veio da Home, Busca, Categorias (com TMDb ID)
+          console.log(`[movieDetail] Carregando por TMDb ID: ${movieId}`);
+          movieData = await getMovieTMDbDetails(movieId);
+        } else if (imdbId) {
+          // Se veio do Perfil (com IMDb ID)
+          console.log(`[movieDetail] Carregando por IMDb ID: ${imdbId}`);
+          movieData = await getMovieByIMDbId(imdbId);
+        } else {
+          throw new Error("Nenhum ID de filme fornecido.");
+        }
+        
         setMovie(movieData);
+
+        // Se o filme foi carregado E tem um ID do IMDb, busca na biblioteca
+        const finalImdbId = movieData?.external_ids?.imdb_id || imdbId;        
+
+        if (finalImdbId) { 
+          console.log(`[movieDetail] Verificando status da biblioteca para: ${finalImdbId}`);
+          // Busca no backend se esse filme já está salvo
+          const libraryEntry = await getLibraryEntry(finalImdbId);
+          if (libraryEntry !== null) {
+            // SE ESTIVER, ATUALIZA O ESTADO!
+            setLibraryStatus(libraryEntry.status); 
+            console.log(`[movieDetail] Status encontrado: ${libraryEntry.status}`);
+          } else {
+            console.log(`[movieDetail] Filme não encontrado na biblioteca.`);
+          }
+        } else {
+          console.warn(`[movieDetail] Não foi possível encontrar um IMDb ID para ${movieData?.title}. Os botões de status podem não funcionar.`);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados do filme:", error);
+      } finally {
         setLoading(false);
-      };
-      loadMovieData();
+      }
+    };
+    
+    loadMovieData();
+  }, [movieId, imdbId]);
+
+  // Ação de 'Já Assisti' ou 'Lista de Desejos'
+  const handleLibraryAction = async (newStatus: 'watched' | 'wishlist') => {
+    if (!movie || isSubmitting) return;
+
+    // Se o usuário clicar no mesmo botão, desmarca (vira 'none')
+    const finalStatus = (libraryStatus === newStatus) ? 'none' : newStatus;
+
+    console.log(`[movieDetail] Botão clicado. Novo status: ${finalStatus}`);
+    setIsSubmitting(true);
+    try {
+      await upsertMovieToLibrary(movie, finalStatus);
+      setLibraryStatus(finalStatus); // Atualiza o estado da UI instantaneamente
+    
+    } catch (error) {
+      console.error('[movieDetail] Falha ao salvar:', error);
+      if (error instanceof Error) {
+        Alert.alert("Erro ao Salvar", error.message);
+      } else {
+        Alert.alert("Erro ao Salvar", "Ocorreu um erro desconhecido.");
+      }
+    
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [movieId]);
-
-  const handleMarkAsWatched = () => {
-    setIsWatched(true);
-    console.log(`Filme "${movie?.title}" marcado como assistido.`);
   };
-
+  
+  // TODO: Conectar esta função
   const handleSaveReview = () => {
     if (userRating === 0) {
-      alert('Por favor, selecione uma nota antes de salvar.');
+      Alert.alert('Por favor, selecione uma nota antes de salvar.');
       return;
     }
     console.log(`Avaliação salva para "${movie?.title}": Nota ${userRating}/5, Comentário: ${userComment}`);
-    alert('Sua avaliação foi salva!');
+    Alert.alert('Sua avaliação foi salva!');
   };
 
   if (loading) {
     return <ActivityIndicator size="large" color={COLORS.primary} style={styles.centered} />;
   }
 
-  if (!movie) {
+  
+ if (!movie) {
     return (
       <SafeAreaView style={styles.centered}>
+        <Stack.Screen options={{ title: 'Erro' }} />
         <Text style={styles.errorText}>Filme não encontrado.</Text>
       </SafeAreaView>
     );
   }
+  // Define o estado dos botões
+  const isWishlisted = libraryStatus === 'wishlist';
+  const isWatched = libraryStatus === 'watched';
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: movie?.title }} />
+      <Stack.Screen options={{ title: movie.title || 'Detalhes' }} />
       <ScrollView showsVerticalScrollIndicator={false}>
         <Image source={{ uri: movie.poster }} style={styles.poster} />
         <View style={styles.content}>
@@ -68,7 +149,7 @@ export default function MovieDetailPage() {
               <Ionicons name="star" color={COLORS.accent} size={18} />
               <Text style={styles.infoText}>{movie.rating}</Text>
             </View>
-            {}
+            {/* TODO: Adicionar Ano, Duração, etc. */}
           </View>
 
           {movie.synopsis && (
@@ -79,15 +160,26 @@ export default function MovieDetailPage() {
           )}
 
           <View style={styles.buttonContainer}>
-             <TouchableOpacity style={[styles.actionButton, styles.wishlistButton]}>
-                <Ionicons name="bookmark-outline" size={22} color={COLORS.textPrimary} />
-                <Text style={styles.actionButtonText}>Lista de Desejos</Text>
+             <TouchableOpacity 
+                style={[styles.actionButton, isWishlisted ? styles.wishlistButtonPressed : styles.wishlistButton]}
+                onPress={() => handleLibraryAction('wishlist')}
+                disabled={isSubmitting}
+             >
+                <Ionicons name={isWishlisted ? "bookmark" : "bookmark-outline"} size={22} color={isWishlisted ? COLORS.background : COLORS.textPrimary} />
+                <Text style={[styles.actionButtonText, isWishlisted && { color: COLORS.background }]}>
+                  {isWishlisted ? "Na Lista" : "Lista"}
+                </Text>
              </TouchableOpacity>
+             
              <TouchableOpacity
                 style={[styles.actionButton, isWatched ? styles.watchedButtonPressed : styles.watchedButton]}
-                onPress={handleMarkAsWatched}>
-                <Ionicons name="checkmark-circle-outline" size={22} color={isWatched ? COLORS.background : COLORS.textPrimary} />
-                <Text style={[styles.actionButtonText, isWatched && { color: COLORS.background }]}>Já Assisti</Text>
+                onPress={() => handleLibraryAction('watched')}
+                disabled={isSubmitting}
+             >
+                <Ionicons name={isWatched ? "checkmark-circle" : "checkmark-circle-outline"} size={22} color={isWatched ? COLORS.background : COLORS.textPrimary} />
+                <Text style={[styles.actionButtonText, isWatched && { color: COLORS.background }]}>
+                  {isWatched ? "Assistido" : "Assisti"}
+                </Text>
              </TouchableOpacity>
           </View>
 
@@ -127,8 +219,9 @@ const styles = StyleSheet.create({
   buttonContainer: { flexDirection: 'row', marginTop: 30, justifyContent: 'space-between' },
   actionButton: { flex: 1, flexDirection: 'row', padding: 15, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   wishlistButton: { backgroundColor: COLORS.surface, marginRight: 10 },
-  watchedButton: { backgroundColor: COLORS.primary, marginLeft: 10 },
+  wishlistButtonPressed: { backgroundColor: COLORS.accent, marginRight: 10 }, // Botão "Lista" pressionado
+  watchedButton: { backgroundColor: COLORS.surface, marginLeft: 10 },
+  watchedButtonPressed: { backgroundColor: COLORS.primary, marginLeft: 10 }, // Botão "Assisti" pressionado
   actionButtonText: { color: COLORS.textPrimary, fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
-  watchedButtonPressed: { backgroundColor: COLORS.accent, marginLeft: 10 },
   reviewContainer: { marginTop: 30, paddingTop: 20, borderTopWidth: 1, borderTopColor: COLORS.border },
 });

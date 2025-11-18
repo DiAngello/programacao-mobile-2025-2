@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, ImageBackground, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, ImageBackground, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,19 +26,31 @@ export default function HomePage() {
   }, []); 
 
   const handleMoviePress = (movie: Movie) => {
-    router.push(`/movieDetail?movieId=${movie.id}`);
+     if (movie.poster_path) {
+      console.log(`[Home] Navegando com TMDb ID: ${movie.id}`);
+      router.push(`/movieDetail?movieId=${movie.id}`);
+    } else {
+     
+      console.log(`[Home] Navegando com IMDb ID: ${movie.id}`);
+      router.push(`/movieDetail?imdbId=${movie.id}`);
+    }
   };
 
   const renderHeroHeader = () => {
     if (!featuredMovie) return null;
 
+    // A API do TMDb usa 'poster_path' e 'overview'
     return (
       <View style={styles.heroContainer}>
-        <ImageBackground source={{ uri: featuredMovie.poster }} style={styles.heroImage}>
+        <ImageBackground 
+          source={{ uri: `https://image.tmdb.org/t/p/w500${featuredMovie.poster_path}` }} 
+          style={styles.heroImage}
+        >
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)', COLORS.background]} style={styles.heroOverlay}>
             <Text style={styles.heroTitle}>{featuredMovie.title}</Text>
-            {featuredMovie.synopsis && <Text style={styles.heroSynopsis} numberOfLines={2}>{featuredMovie.synopsis}</Text>}
+            {featuredMovie.overview && <Text style={styles.heroSynopsis} numberOfLines={2}>{featuredMovie.overview}</Text>}
             <View style={styles.heroButtonRow}>
+              {/* Este botão de "Assistir trailer" ainda não está conectado */}
               <TouchableOpacity style={styles.primaryButton}>
                 <Ionicons name="play" size={20} color={COLORS.background} />
                 <Text style={styles.primaryButtonText}>Assistir trailer</Text>
@@ -55,7 +67,7 @@ export default function HomePage() {
   };
   
   if (loading) {
-    return <ActivityIndicator size="large" color={COLORS.primary} style={{ flex: 1, backgroundColor: COLORS.background }} />;
+    return <ActivityIndicator size="large" color={COLORS.primary} style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center' }} />;
   }
 
   return (

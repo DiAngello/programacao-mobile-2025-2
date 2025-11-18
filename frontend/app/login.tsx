@@ -1,19 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  SafeAreaView, 
+  TouchableOpacity, 
+  ScrollView,
+  ActivityIndicator
+} from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import AppAuthInput from '../components/appAuthInput'; 
-import AppButton from '../components/appButton';       
+import AppButton from '../components/appButton';
+import * as authService from '../services/authService';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    console.log('Tentando login com:', email, password);
-    router.replace('/home'); 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await authService.login(email, password);
+      console.log('Login com sucesso, navegando para home...');
+      router.replace('/(tabs)/home'); 
+    } catch (err) { // 👇 [CORREÇÃO 1] - VERIFICANDO O TIPO DO ERRO
+      // Verificamos se 'err' é realmente uma instância de 'Error'
+      if (err instanceof Error) {
+        setError(err.message);
+        console.error('Falha no login:', err.message);
+      } else {
+        // Fallback para qualquer outro tipo de erro
+        const unknownError = 'Um erro desconhecido ocorreu.';
+        setError(unknownError);
+        console.error(unknownError, err);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -43,6 +73,7 @@ export default function LoginPage() {
             autoCapitalize="none"
             value={email}
             onChangeText={setEmail}
+            editable={!loading}
           />
           <AppAuthInput
             label="Senha"
@@ -50,10 +81,19 @@ export default function LoginPage() {
             secureTextEntry
             value={password}
             onChangeText={setPassword}
+            editable={!loading}
           />
         </View>
+        
+        {error && (
+          <Text style={styles.errorText}>{error}</Text>
+        )}
 
-        <AppButton title="Acessar" onPress={handleLogin} />
+        {loading ? (
+          <ActivityIndicator size="large" color={COLORS.primary} style={styles.loading} />
+        ) : (
+          <AppButton title="Acessar" onPress={handleLogin} />
+        )}
 
         <TouchableOpacity onPress={handleForgotPassword}>
           <Text style={styles.forgotPasswordText}>Esqueceu sua senha?</Text>
@@ -84,4 +124,17 @@ const styles = StyleSheet.create({
   bottomLinkContainer: { flexDirection: 'row', marginTop: 'auto', marginBottom: 20 },
   bottomText: { color: COLORS.textSecondary, fontSize: 16 },
   bottomLink: { color: COLORS.primary, fontSize: 16, fontWeight: 'bold' },
+  
+  // --- ESTILOS CORRIGIDOS ---
+  errorText: {
+    // 👇 [CORREÇÃO 2] - Trocado de 'COLORS.danger' para 'red'
+    // 'danger' não existe no seu objeto COLORS.
+    color: 'red', 
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center'
+  },
+  loading: {
+    padding: 20 
+  }
 });
