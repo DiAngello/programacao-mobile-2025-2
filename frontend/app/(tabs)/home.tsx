@@ -56,11 +56,6 @@ export default function HomePage() {
             <Text style={styles.heroTitle}>{featuredMovie.title}</Text>
             {featuredMovie.overview && <Text style={styles.heroSynopsis} numberOfLines={2}>{featuredMovie.overview}</Text>}
             <View style={styles.heroButtonRow}>
-              {/* Este botão de "Assistir trailer" ainda não está conectado */}
-              <TouchableOpacity style={styles.primaryButton}>
-                <Ionicons name="play" size={20} color={COLORS.background} />
-                <Text style={styles.primaryButtonText}>Assistir trailer</Text>
-              </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={() => handleMoviePress(featuredMovie)}>
                 <Ionicons name="information-circle-outline" size={20} color={COLORS.textPrimary} />
                 <Text style={styles.secondaryButtonText}>Saiba mais</Text>
