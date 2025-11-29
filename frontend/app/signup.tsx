@@ -6,14 +6,13 @@ import {
   SafeAreaView, 
   TouchableOpacity, 
   ScrollView,
-  ActivityIndicator // 1. Importar ActivityIndicator
+  ActivityIndicator 
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import AppAuthInput from '../components/appAuthInput';
 import AppButton from '../components/appButton';
-// 2. Importar o serviço de autenticação
 import * as authService from '../services/authService';
 
 export default function SignUpPage() {
@@ -22,16 +21,13 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // 3. Adicionar estados de loading e erro
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 4. Modificar o handleRegister
   const handleRegister = async () => {
     setLoading(true);
     setError(null);
 
-    // 5. Validar campos (básico)
     if (!name || !email || !password) {
       setError('Todos os campos são obrigatórios.');
       setLoading(false);
@@ -39,19 +35,11 @@ export default function SignUpPage() {
     }
 
     try {
-      // 6. CHAMAR O BACKEND!
-      // (Seu backend espera 'username', então passamos 'name' como 'username')
+   
       await authService.register(name, email, password);
-
-      // 7. SUCESSO!
-      // Navega o usuário para o login para ele poder entrar
-      console.log('Cadastro com sucesso, navegando para o login...');
       router.replace('/login');
-      // Você pode mostrar um "toast" ou mensagem de sucesso aqui
 
     } catch (err) {
-      // 8. FALHA!
-      // Mostra o erro vindo do backend (ex: "Email já cadastrado")
       if (err instanceof Error) {
         setError(err.message);
         console.error('Falha no cadastro:', err.message);
@@ -59,7 +47,6 @@ export default function SignUpPage() {
         setError('Um erro desconhecido ocorreu.');
       }
     } finally {
-      // 9. Parar o loading
       setLoading(false);
     }
   };
@@ -107,12 +94,10 @@ export default function SignUpPage() {
           />
         </View>
 
-        {/* 10. Mostrar mensagem de erro */}
         {error && (
           <Text style={styles.errorText}>{error}</Text>
         )}
 
-        {/* 11. Mostrar loading ou o botão */}
         {loading ? (
           <ActivityIndicator size="large" color={COLORS.primary} style={styles.loading} />
         ) : (

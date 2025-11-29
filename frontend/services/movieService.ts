@@ -1,61 +1,48 @@
 import api from './api';
-import { Movie, Category, Genre } from "../types";
+import { Movie, Category, Genre } from '../types';
 import { isAxiosError } from 'axios';
 
-// --- HELPER 1: Para filmes da API (TMDb) ---
 const mapTMDbMovie = (apiMovie: any): Movie => {
   return {
     ...apiMovie,
-    poster: `https://image.tmdb.org/t/p/w500${apiMovie.poster_path}`,
+    poster: apiMovie.poster_path ? `https://image.tmdb.org/t/p/w500${apiMovie.poster_path}` : '',
     synopsis: apiMovie.overview,
-    rating: apiMovie.vote_average?.toFixed(1) || 'N/A',
+    rating: apiMovie.vote_average?.toFixed(1) || 'N/A'
   };
 };
 
-// --- [NOVO] HELPER 2: Para filmes da Biblioteca (BD) ---
 const mapLibraryMovie = (dbMovie: any): Movie => {
-  if (!dbMovie.poster_url) {
-    console.warn(`[mapLibraryMovie] Filme "${dbMovie.title}" (ID: ${dbMovie.imdb_id}) está sem poster_url no banco!`);
-  }
   return {
-    ...dbMovie, 
-    poster: `https://image.tmdb.org/t/p/w500${dbMovie.poster_url}`,
-    synopsis: dbMovie.overview || 'Sem sinopse',
-    rating: dbMovie.publicRating?.toString() || 'N/A',
+    ...dbMovie,
+    poster: dbMovie.poster_url?.startsWith('http')
+      ? dbMovie.poster_url
+      : `https://image.tmdb.org/t/p/w500${dbMovie.poster_url}`,
+    synopsis: dbMovie.synopsis || 'Sem sinopse',
+    rating: dbMovie.publicRating?.toString() || 'N/A'
   };
 };
-
-// --- FUNÇÕES DE API ATUALIZADAS ---
 
 export const getHomeData = async (): Promise<{ featured: Movie; categories: Category[] }> => {
   try {
-    const [
-      wishlistResponse, 
-      watchedResponse,  
-      popularResponse,  
-    ] = await Promise.all([
+    const [wishlist, watched, popular] = await Promise.all([
       api.get('/library/wishlist'),
       api.get('/library/watched'),
-      api.get('/movies/popular') 
+      api.get('/movies/popular')
     ]);
 
-    const wishlistMovies: Movie[] = wishlistResponse.data.map(mapLibraryMovie);
-    const watchedMovies: Movie[] = watchedResponse.data.map(mapLibraryMovie);
-    const popularMovies: Movie[] = popularResponse.data.map(mapTMDbMovie);
-    
-    const featuredMovie = popularMovies[0] || {} as Movie;
+    const wishlistMovies = wishlist.data.map(mapLibraryMovie);
+    const watchedMovies = watched.data.map(mapLibraryMovie);
+    const popularMovies = popular.data.map(mapTMDbMovie);
 
-    const data = {
-      featured: featuredMovie,
+    return {
+      featured: popularMovies[0] || ({} as Movie),
       categories: [
-       { id: 'populares', title: 'Populares', movies: popularMovies },
+        { id: 'populares', title: 'Populares', movies: popularMovies },
         { id: 'wishlist', title: 'Minha Lista', movies: wishlistMovies },
-        { id: 'watched', title: 'Assistidos', movies: watchedMovies },
-      ],
+        { id: 'watched', title: 'Assistidos', movies: watchedMovies }
+      ]
     };
-    return data;
-  } catch (error) {
-    console.error('Erro ao buscar dados da Home:', error);
+  } catch {
     return { featured: {} as Movie, categories: [] };
   }
 };
@@ -65,8 +52,7 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
   try {
     const response = await api.get('/movies/search_tmdb', { params: { query } });
     return response.data.map(mapTMDbMovie);
-  } catch (error) {
-    console.error('Erro ao buscar (TMDb):', error);
+  } catch {
     return [];
   }
 };
@@ -75,9 +61,7 @@ export const getMovieTMDbDetails = async (tmdbId: string): Promise<Movie | null>
   try {
     const response = await api.get(`/movies/details/${tmdbId}`);
     return mapTMDbMovie(response.data);
-  } catch (error)
-  {
-    console.error('Erro ao buscar detalhes (TMDb):', error);
+  } catch {
     return null;
   }
 };
@@ -85,9 +69,8 @@ export const getMovieTMDbDetails = async (tmdbId: string): Promise<Movie | null>
 export const getGenres = async (): Promise<Genre[]> => {
   try {
     const response = await api.get('/movies/genres');
-    return response.data; 
-  } catch (error) {
-    console.error('Erro ao buscar gêneros:', error);
+    return response.data;
+  } catch {
     return [];
   }
 };
@@ -96,21 +79,16 @@ export const getMoviesByCategory = async (genreId: string): Promise<Movie[]> => 
   try {
     const response = await api.get('/movies/discover', { params: { genreId } });
     return response.data.map(mapTMDbMovie);
-  } catch (error) {
-    console.error(`Erro ao buscar por gênero ${genreId}:`, error);
+  } catch {
     return [];
   }
 };
 
 export const getMovieByIMDbId = async (imdbId: string): Promise<Movie | null> => {
-  if (!imdbId) return null;
   try {
-    // Chama a nova rota do backend (que vamos criar)
     const response = await api.get(`/movies/imdb/${imdbId}`);
-    // O backend já vai mapear os dados para nós
     return response.data;
-  } catch (error) {
-    console.error(`Erro ao buscar por IMDb ID ${imdbId}:`, error);
+  } catch {
     return null;
   }
 };
@@ -119,8 +97,7 @@ export const getPopular = async (): Promise<Movie[]> => {
   try {
     const response = await api.get('/movies/popular');
     return response.data.map(mapTMDbMovie);
-  } catch (error) {
-    console.error('Erro ao buscar populares:', error);
+  } catch {
     return [];
   }
 };
@@ -129,8 +106,7 @@ export const getWatchedMovies = async (): Promise<Movie[]> => {
   try {
     const response = await api.get('/library/watched');
     return response.data.map(mapLibraryMovie);
-  } catch (error) {
-    console.error('Erro ao buscar filmes assistidos:', error);
+  } catch {
     return [];
   }
 };
@@ -139,75 +115,52 @@ export const getWishlistMovies = async (): Promise<Movie[]> => {
   try {
     const response = await api.get('/library/wishlist');
     return response.data.map(mapLibraryMovie);
-  } catch (error) {
-    console.error('Erro ao buscar wishlist:', error);
+  } catch {
     return [];
   }
 };
 
-// --- Funções da Biblioteca Pessoal (Upsert/Delete) ---
-
-// [CORREÇÃO]: A função 'upsertMovieToLibrary' estava duplicada e quebrada.
-// Esta é a versão correta e unificada.
-export const upsertMovieToLibrary = async (movie: Movie, status: 'wishlist' | 'watched' | 'none') => {
-  
-  console.log('[movieService] Tentando salvar:', movie.title, 'como', status);
-
-  // 1. Valida se temos o ID do IMDb
-  const imdbId = movie.external_ids?.imdb_id;
-  if (!imdbId) {
-    const errorMsg = 'ID IMDb não encontrado para este filme.';
-    console.error('❌ [movieService] ERRO FATAL:', errorMsg, movie);
-    throw new Error(errorMsg);
-  }
-
+export async function upsertMovieToLibrary(
+  movie: any,
+  status: 'wishlist' | 'watched',
+  rating?: number,
+  notes?: string
+) {
   try {
-    // 2. Prepara o payload para o backend
-    const payload = {
-      imdb_id: imdbId,
-      tmdb_id: movie.id, 
-      title: movie.title,
-      poster_url: movie.poster_path, // Salva o 'path' (ex: /path.jpg)
-      status: status,
-      publicRating: movie.vote_average?.toFixed(1) || null
-    };
-    
-    console.log('[movieService] Enviando este payload para POST /api/library:', payload);
-    
-    // 3. Envia para a API
-    const response = await api.post('/library', payload);
-    return response.data;
+    const imdb = movie?.external_ids?.imdb_id;
+    if (!imdb) throw new Error('IMDB ID ausente.');
 
+    const payload = {
+      imdb_id: imdb,
+      tmdb_id: movie.id?.toString(),
+      title: movie.title,
+      poster_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+      status,
+      genres: movie.genres?.map((g: any) => g.name).join(', '),  
+      actors: movie.credits?.cast?.slice(0,5).map((a: any) => a.name).join(', '),
+      director: movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name,
+      rating,
+      notes
+    };
+
+    const response = await api.post('/library/upsert', payload);
+    return response.data; 
   } catch (error) {
-    console.error('❌ [movieService] Erro ao adicionar na biblioteca:', error);
-    // 4. Repassa o erro do backend para a UI
-    if (isAxiosError(error) && error.response?.data?.error) {
-      throw new Error(error.response.data.error);
-    }
-    throw error; // Lança o erro genérico
+    console.error('Erro ao salvar filme na biblioteca:', error);
+    throw error;
   }
-};
+}
 
 export const removeMovieFromLibrary = async (imdbId: string) => {
-    try {
-      const response = await api.delete(`/library/${imdbId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Erro ao remover da biblioteca:', error);
-      throw error;
-    }
-  };
-  
-  export const getLibraryEntry = async (imdbId: string) => {
-    if (!imdbId) return null;
-    try {
-      const response = await api.get(`/library/${imdbId}`);
-      return response.data; 
-    } catch (error) {
-      if (isAxiosError(error) && error.response?.status === 404) {
-        return null; // Não encontrado
-      }
-      console.error('Erro ao checar biblioteca:', error);
-      return null; // Outros erros
-    }
-  };
+  const response = await api.delete(`/library/${imdbId}`);
+  return response.data;
+};
+
+export const getLibraryEntry = async (imdbId: string) => {
+  try {
+    const response = await api.get(`/library/${imdbId}`);
+    return response.data;
+  } catch {
+    return null;
+  }
+};

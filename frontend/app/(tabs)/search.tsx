@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COLORS } from '../../constants/colors';
 import { Movie } from '../../types';
-// [CORREÇÃO 1]: Importa 'getPopular' e remove 'getTopSearches'
 import { searchMovies, getPopular } from '../../services/movieService'; 
 import PosterCard from '../../components/posterCard';
 
@@ -16,11 +15,8 @@ export default function SearchPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   
-  // O filtro por 'type' foi removido, pois o backend não o suporta.
-
   useEffect(() => {
     const loadTopSearches = async () => {
-      // [CORREÇÃO 2]: Chama 'getPopular()'
       const movies = await getPopular(); 
       setTopSearches(movies);
       setInitialLoading(false);
@@ -34,20 +30,17 @@ export default function SearchPage() {
       return;
     }
     setIsSearching(true);
-    // Debounce: espera 500ms após o usuário parar de digitar
     const handler = setTimeout(async () => {
       console.log(`[UI] Ativando busca para: "${query}"`);
-      // [CORREÇÃO 3]: Chama 'searchMovies' apenas com a 'query'
       const movies = await searchMovies(query); 
       setResults(movies);
       setIsSearching(false);
     }, 500);
 
     return () => clearTimeout(handler);
-  }, [query]); // Remove 'searchType' das dependências
+  }, [query]); 
 
   const handleMoviePress = (movie: Movie) => {
-    // O 'id' do TMDb (number) precisa ser string para a URL
     router.push(`/movieDetail?movieId=${movie.id.toString()}`);
   };
 
@@ -58,15 +51,13 @@ export default function SearchPage() {
       <View style={styles.searchBar}>
         <Ionicons name="search" size={20} color={COLORS.textSecondary} style={styles.searchIcon} />
         <TextInput
-          placeholder="Buscar por título..." // Placeholder simplificado
+          placeholder="Buscar por título..." 
           placeholderTextColor={COLORS.textSecondary}
           style={styles.searchInput}
           value={query}
           onChangeText={setQuery}
         />
       </View>
-
-      {/* [CORREÇÃO 4]: Botões de filtro removidos */}
       
       {initialLoading ? (
         <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />

@@ -25,7 +25,6 @@ const mapMovieData = (apiMovie) => {
 };
 class TmdbController {
 
-  // Rota: GET /api/movies/popular
   async getPopular(req, res) {
     try {
       const response = await tmdbApi.get('/movie/popular');
@@ -35,7 +34,6 @@ class TmdbController {
     }
   }
 
-  // Rota: GET /api/movies/search_tmdb?query=..
   async search(req, res) {
     const { query } = req.query; 
     try {
@@ -48,7 +46,6 @@ class TmdbController {
     }
   }
 
-  // Rota: GET /api/movies/details/:tmdb_id
   async getDetails(req, res) {
     const { tmdb_id } = req.params;
     try {
@@ -61,7 +58,6 @@ class TmdbController {
     }
   }
 
-  // Rota: GET /api/movies/genres
   async getGenres(req, res) {
     try {
       const response = await tmdbApi.get('/genre/movie/list');
@@ -71,7 +67,6 @@ class TmdbController {
     }
   }
 
-  // Rota: GET /api/movies/discover?genreId=28
   async discoverByGenre(req, res) {
     const { genreId } = req.query;
     if (!genreId) {
@@ -104,7 +99,6 @@ class TmdbController {
       const movieDetails = await fetchTMDbDetails(foundMovie.id);
       return res.json(movieDetails);
     } catch (error) {
-      console.error('❌ ERRO em /getByImdbId:', error.message);
       return res.status(502).json({ error: 'Erro ao buscar filme por IMDb ID.' });
     }
   }

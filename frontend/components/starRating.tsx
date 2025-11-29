@@ -7,6 +7,7 @@ interface StarRatingProps {
   rating: number;
   onRatingChange: (rating: number) => void;
   maxStars?: number;
+  disabled?: boolean;
 }
 
 const StarRating: React.FC<StarRatingProps> = ({ rating, onRatingChange, maxStars = 5 }) => {

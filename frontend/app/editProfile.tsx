@@ -5,20 +5,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import AppTextInput from '../components/appTextInput';
 import AppButton from '../components/appButton';
-// Importa o serviço de autenticação
 import * as authService from '../services/authService';
 
 export default function EditProfilePage() {
   const router = useRouter();
 
-  // Estados para o formulário
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // Apenas para nova senha
+  const [password, setPassword] = useState(''); 
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Carrega os dados do usuário ao abrir a tela
   useEffect(() => {
     const loadUserData = async () => {
       setLoading(true);
@@ -35,12 +32,10 @@ export default function EditProfilePage() {
   const handleSaveChanges = async () => {
     setIsSaving(true);
     try {
-      // Chama a API para atualizar o perfil
-      // A API ignora a senha se for nula ou vazia
       await authService.updateProfile(username, email, password || undefined);
       
       Alert.alert("Sucesso", "Seu perfil foi atualizado.");
-      router.back(); // Volta para a tela de perfil
+      router.back(); 
 
     } catch (error) {
       if (error instanceof Error) {

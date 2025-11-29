@@ -1,6 +1,3 @@
-// ATENÇÃO: Renomeie o seu arquivo [name].tsx para [id].tsx
-// A rota agora é baseada no ID do Gênero, não no nome.
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
@@ -11,7 +8,6 @@ import PosterCard from '../../components/posterCard';
 
 export default function CategoryResultsPage() {
   const router = useRouter();
-  // Lemos o 'id' da rota (ex: /28) e o 'name' da query (ex: ?name=Ação)
   const { id, name } = useLocalSearchParams<{ id: string, name: string }>(); 
   
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -22,7 +18,6 @@ export default function CategoryResultsPage() {
     if (id) {
       const loadMovies = async () => {
         setLoading(true);
-        // Passa o ID para o serviço, não o nome
         const results = await getMoviesByCategory(id);
         setMovies(results);
         setLoading(false);

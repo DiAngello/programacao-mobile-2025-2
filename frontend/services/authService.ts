@@ -9,7 +9,7 @@ export type User = {
   email: string;
 };
 
-type LoginResponse = {
+export type LoginResponse = {
   token: string;
   user: User;
 };
@@ -22,21 +22,17 @@ type LoginResponse = {
 export const login = async (email: string, password: string): Promise<User> => {
   console.log('AuthService: Tentando login com:', email);
   try {
-    const response = await api.post<LoginResponse>('/auth/login', {
-      email,
-      password,
-    });
-
+    const response = await api.post<LoginResponse>('/auth/login', { email, password });
     const { token, user } = response.data;
-    if (!token) {
-      throw new Error('Token não recebido do backend');
-    }
 
+    if (!token) throw new Error('Token não recebido do backend');
+
+    // Salva token e dados do usuário
     await AsyncStorage.setItem('userToken', token);
     await AsyncStorage.setItem('userData', JSON.stringify(user));
 
     console.log('AuthService: Login com sucesso, token salvo!');
-    return user; 
+    return user;
 
   } catch (error) {
     if (isAxiosError(error) && error.response?.data?.error) {
@@ -52,70 +48,50 @@ export const login = async (email: string, password: string): Promise<User> => {
  * Tenta registrar um novo usuário no backend.
  */
 export const register = async (username: string, email: string, password: string) => {
-  console.log('AuthService: Tentando registrar:', username, email);
   try {
-    const response = await api.post('/auth/register', {
-      username,
-      email,
-      password,
-    });
+    const response = await api.post('/auth/register', { username, email, password });
     return response.data;
   } catch (error) {
     if (isAxiosError(error) && error.response?.data?.error) {
-      console.error('AuthService: Falha no registro (Backend):', error.response.data.error);
       throw new Error(error.response.data.error);
     }
-    console.error('AuthService: Falha no registro (Genérico):', error);
     throw new Error('Não foi possível conectar ao servidor.');
   }
 };
 
 /**
- * Faz logout limpando o token.
+ * Faz logout limpando token e dados do usuário.
  */
 export const logout = async () => {
   await AsyncStorage.removeItem('userToken');
   await AsyncStorage.removeItem('userData');
-  console.log('AuthService: Logout, token removido.');
+  console.log('AuthService: Logout realizado.');
 };
 
 /**
- * [NOVO] Busca os dados do usuário logado (do AsyncStorage).
+ * Busca os dados do usuário logado (AsyncStorage).
  */
 export const getProfileFromStorage = async (): Promise<User | null> => {
   const userDataString = await AsyncStorage.getItem('userData');
-  if (userDataString) {
-    return JSON.parse(userDataString) as User;
-  }
+  if (userDataString) return JSON.parse(userDataString) as User;
   return null;
 };
 
 /**
- * [NOVO] Atualiza o perfil do usuário no backend.
- * Chama: PUT /api/auth/me
+ * Atualiza o perfil do usuário no backend.
  */
-export const updateProfile = async (username: string, email: string, password?: string) => {
-  console.log('AuthService: Atualizando perfil...');
+export const updateProfile = async (username: string, email: string, password?: string): Promise<User> => {
   try {
-    const payload = {
-      username,
-      email,
-      ...(password && { password }), // Inclui a senha apenas se ela for fornecida
-    };
-
+    const payload = { username, email, ...(password && { password }) };
     const response = await api.put<User>('/auth/me', payload);
 
-    // Atualiza os dados salvos no AsyncStorage
     await AsyncStorage.setItem('userData', JSON.stringify(response.data));
     console.log('AuthService: Perfil atualizado com sucesso.');
     return response.data;
-    
   } catch (error) {
-     if (isAxiosError(error) && error.response?.data?.error) {
-      console.error('AuthService: Falha ao atualizar (Backend):', error.response.data.error);
+    if (isAxiosError(error) && error.response?.data?.error) {
       throw new Error(error.response.data.error);
     }
-    console.error('AuthService: Falha ao atualizar (Genérico):', error);
     throw new Error('Não foi possível atualizar o perfil.');
   }
 };

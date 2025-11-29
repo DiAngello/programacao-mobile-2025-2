@@ -4,7 +4,7 @@ const tmdbApi = axios.create({
   baseURL: 'https://api.themoviedb.org/3',
   params: {
     api_key: process.env.TMDB_API_KEY,
-    language: 'pt-BR' // Traz resultados em português
+    language: 'pt-BR' 
   }
 });
 
@@ -13,13 +13,8 @@ const tmdbApi = axios.create({
  */
 class TmdbController {
 
-  /**
-   * Busca os filmes mais populares no TMDb.
-   * Rota: GET /api/movies/popular
-   */
   async getPopular(req, res) {
     try {
-      // Busca o endpoint '/movie/popular'
       const response = await tmdbApi.get('/movie/popular');
       return res.json(response.data.results);
     } catch (error) {
@@ -27,14 +22,9 @@ class TmdbController {
     }
   }
 
-  /**
-   * Busca filmes no TMDb por um termo de pesquisa.
-   * Rota: GET /api/movies/search_tmdb?q=...
-   */
   async search(req, res) {
     const { q } = req.query;
     try {
-      // Busca no endpoint '/search/movie' usando a query 'q'
       const response = await tmdbApi.get('/search/movie', {
         params: { query: q }
       });
@@ -44,30 +34,40 @@ class TmdbController {
     }
   }
 
-  /**
-   * Busca detalhes de um filme específico no TMDb (incluindo o imdb_id).
-   * Rota: GET /api/movies/details/:tmdb_id
-   */
   async getDetails(req, res) {
-    const { tmdb_id } = req.params;
-    try {
-      // Busca o filme e solicita 'external_ids' (para obter o imdb_id)
-      const response = await tmdbApi.get(`/movie/${tmdb_id}`, {
-        params: { append_to_response: 'external_ids' }
-      });
-      return res.json(response.data);
-    } catch (error) {
-      return res.status(502).json({ error: 'Erro ao buscar detalhes no TMDb.' });
-    }
-  }
+  const { tmdb_id } = req.params;
 
-  /**
-   * Busca a lista oficial de gêneros (categorias) do TMDb.
-   * Rota: GET /api/movies/genres
-   */
+  try {
+    const response = await tmdbApi.get(`/movie/${tmdb_id}`, {
+      params: { append_to_response: 'external_ids' }
+    });
+
+    const movie = response.data;
+    const imdb_id = movie.external_ids.imdb_id;
+
+    let relation = null;
+    if (req.userId && imdb_id) {
+      relation = await UserMovie.findOne({
+        where: {
+          user_id: req.userId,
+          movie_id: imdb_id
+        }
+      });
+    }
+
+    return res.json({
+      ...movie,
+      watched: relation?.watched || false,
+      on_wishlist: relation?.on_wishlist || false
+    });
+
+  } catch (error) {
+    return res.status(502).json({ error: 'Erro ao buscar detalhes no TMDb.' });
+  }
+}
+
   async getGenres(req, res) {
     try {
-      // Busca no endpoint '/genre/movie/list'
       const response = await tmdbApi.get('/genre/movie/list');
       return res.json(response.data.genres); 
     } catch (error) {
@@ -75,10 +75,6 @@ class TmdbController {
     }
   }
 
-  /**
-   * Busca filmes populares filtrados por um ID de gênero.
-   * Rota: GET /api/movies/discover?genreId=28
-   */
   async discoverByGenre(req, res) {
     const { genreId } = req.query;
     if (!genreId) {
@@ -86,7 +82,6 @@ class TmdbController {
     }
     
     try {
-      // Busca no endpoint '/discover/movie' filtrando por 'with_genres'
       const response = await tmdbApi.get('/discover/movie', {
         params: {
           with_genres: genreId,

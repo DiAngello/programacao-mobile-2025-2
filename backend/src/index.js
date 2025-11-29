@@ -26,7 +26,7 @@
   // Middleware de tratamento de erro 
   app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).send({ error: 'Algo deu errado no servidor!' });
+    res.status(500).send({ error: 'Algo deu errado no servidor' });
   });
 
   const PORT = process.env.PORT || 3001;

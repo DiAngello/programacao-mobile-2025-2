@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, 
   ActivityIndicator, Alert, TouchableOpacity 
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router'; // Importa 'useFocusEffect'
+import { useRouter, useFocusEffect } from 'expo-router'; 
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { Movie } from '../../types';
@@ -20,7 +20,6 @@ export default function ProfilePage() {
   const [wishlistMovies, setWishlistMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 'useFocusEffect' recarrega os dados toda vez que a tela entra em foco
   useFocusEffect(
     React.useCallback(() => {
       const loadData = async () => {
@@ -40,8 +39,6 @@ export default function ProfilePage() {
   );
 
   const handleMoviePress = (movie: Movie) => {
-    // [CORREÇÃO]: Navegamos usando 'movie.tmdb_id'
-    // 'movie.id' era o 'imdb_id' (ex: tt12345), o que causava o erro
      if (!movie.imdb_id) {
       Alert.alert("Erro", "Este filme está com dados incompletos e não pode ser aberto.");
       return;

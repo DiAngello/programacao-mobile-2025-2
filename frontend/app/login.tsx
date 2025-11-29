@@ -19,24 +19,23 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
     setLoading(true);
     setError(null);
+
     try {
-      await authService.login(email, password);
-      console.log('Login com sucesso, navegando para home...');
+      const user = await authService.login(email, password);
+      console.log('Login realizado com sucesso:', user);
+
       router.replace('/(tabs)/home'); 
-    } catch (err) { // 👇 [CORREÇÃO 1] - VERIFICANDO O TIPO DO ERRO
-      // Verificamos se 'err' é realmente uma instância de 'Error'
+    } catch (err) { 
       if (err instanceof Error) {
         setError(err.message);
         console.error('Falha no login:', err.message);
       } else {
-        // Fallback para qualquer outro tipo de erro
         const unknownError = 'Um erro desconhecido ocorreu.';
         setError(unknownError);
         console.error(unknownError, err);
@@ -46,13 +45,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotPassword = () => {
-    router.push('/forgotPassword'); 
-  };
-
-  const handleGoogleLogin = () => {
-    console.log('Login com Google');
-  };
+  const handleForgotPassword = () => router.push('/forgotPassword');
+  const handleGoogleLogin = () => console.log('Login com Google');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -85,9 +79,7 @@ export default function LoginPage() {
           />
         </View>
         
-        {error && (
-          <Text style={styles.errorText}>{error}</Text>
-        )}
+        {error && <Text style={styles.errorText}>{error}</Text>}
 
         {loading ? (
           <ActivityIndicator size="large" color={COLORS.primary} style={styles.loading} />
@@ -124,17 +116,6 @@ const styles = StyleSheet.create({
   bottomLinkContainer: { flexDirection: 'row', marginTop: 'auto', marginBottom: 20 },
   bottomText: { color: COLORS.textSecondary, fontSize: 16 },
   bottomLink: { color: COLORS.primary, fontSize: 16, fontWeight: 'bold' },
-  
-  // --- ESTILOS CORRIGIDOS ---
-  errorText: {
-    // 👇 [CORREÇÃO 2] - Trocado de 'COLORS.danger' para 'red'
-    // 'danger' não existe no seu objeto COLORS.
-    color: 'red', 
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: 'center'
-  },
-  loading: {
-    padding: 20 
-  }
+  errorText: { color: 'red', fontSize: 16, marginBottom: 20, textAlign: 'center' },
+  loading: { padding: 20 }
 });

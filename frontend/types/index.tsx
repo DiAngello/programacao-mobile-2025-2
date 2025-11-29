@@ -1,50 +1,55 @@
 // --- TIPOS GERAIS ---
-
-// Define o que é um Gênero (vindo da API)
 export interface Genre {
   id: number;
   name: string;
 }
 
-// Define uma Categoria (que usamos na Home)
 export interface Category {
   id: string;
   title: string;
-  movies: Movie[]; // Uma categoria é uma fileira de filmes
+  movies: Movie[];
 }
 
-
-// --- TIPO DE FILME (O MAIS IMPORTANTE) ---
-
-// Esta interface combina os dados que vêm da
-// API do TMDb E os dados do nosso banco de dados (biblioteca)
-
 export interface Movie {
-  // --- Dados Comuns (TMDb ID é o principal) ---
-  id: number; // A API usa 'number', não 'string'
+  id: number;
   title: string;
-
-  // --- Dados da API (TMDb) ---
-  // (São opcionais '?' pois nem sempre os temos)
-  poster_path?: string;   // O poster vindo do TMDb (ex: /path.jpg)
-  overview?: string;      // A sinopse vinda do TMDb
-  vote_average?: number;  // A nota (ex: 7.9) vinda do TMDb
+  poster_path?: string;
+  overview?: string;
+  vote_average?: number;
   external_ids?: {
-    imdb_id: string | null; // O ID do IMDb
+    imdb_id: string | null;
   };
-
-  // --- Dados do Nosso Banco de Dados (Biblioteca) ---
-  // (Opcionais, pois um filme da API não terá isso)
   imdb_id?: string;
-  tmdb_id?: number; // O ID do TMDb, salvo no nosso BD
+  tmdb_id?: number;
   status?: 'watched' | 'wishlist' | 'none';
-  
-  // --- Campos do seu Mock (Mantidos para compatibilidade) ---
-  // (Opcionais, para onde podemos mapear os dados da API)
-  poster?: string;  // A URL completa do poster (ex: https://...)
+  crew?: string;
+  credits?: string;
+  poster?: string;
   synopsis?: string;
-  rating?: string;  // A nota formatada como string (ex: "7.9")
+  rating?: string;
   genres?: string[];
   director?: string;
   actors?: string[];
+  release_date?: number;
 }
+
+// --- TIPOS TMDB ---
+export type CrewMember = { job: string; name: string };
+export type CastMember = { name: string };
+
+export type TMDbCredits = {
+  cast: CastMember[];
+  crew: CrewMember[];
+};
+
+export type TMDbMovie = {
+  id: number;
+  title: string;
+  poster: string;
+  synopsis: string;
+  rating?: number;
+  release_date?: string;
+  genres?: { name: string }[];
+  credits?: TMDbCredits;
+  external_ids?: { imdb_id?: string };
+};

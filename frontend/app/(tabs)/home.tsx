@@ -25,16 +25,22 @@ export default function HomePage() {
     loadData();
   }, []); 
 
-  const handleMoviePress = (movie: Movie) => {
-     if (movie.poster_path) {
-      console.log(`[Home] Navegando com TMDb ID: ${movie.id}`);
-      router.push(`/movieDetail?movieId=${movie.id}`);
-    } else {
-     
-      console.log(`[Home] Navegando com IMDb ID: ${movie.id}`);
-      router.push(`/movieDetail?imdbId=${movie.id}`);
-    }
-  };
+    const handleMoviePress = (movie: Movie) => {
+  if (movie.tmdb_id) {
+    router.push(`/movieDetail?movieId=${movie.tmdb_id}`);
+    return;
+  }
+  if (movie.imdb_id) {
+    router.push(`/movieDetail?imdbId=${movie.imdb_id}`);
+    return;
+  }
+  if (movie.id) {
+    router.push(`/movieDetail?movieId=${movie.id}`);
+    return;
+  }
+  Alert.alert('Erro', 'Não foi possível localizar o filme.');
+};
+
 
   const renderHeroHeader = () => {
     if (!featuredMovie) return null;

@@ -1,227 +1,321 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, SafeAreaView, Image, 
-  ScrollView, TouchableOpacity, ActivityIndicator, Alert 
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
+import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
-import { Movie } from '../types';
-// Importa os serviços corretos
-import { 
-  getMovieTMDbDetails, // Busca na API
+import {
+  Movie,
+  TMDbMovie,
+  TMDbCredits,
+  CrewMember,
+  CastMember,
+} from '../types';
+import {
+  getMovieTMDbDetails,
   getLibraryEntry,
-  getMovieByIMDbId,     // Busca no nosso BD
-  upsertMovieToLibrary // Salva no nosso BD
+  getMovieByIMDbId,
+  upsertMovieToLibrary,
 } from '../services/movieService';
 import AppTextInput from '../components/appTextInput';
 import AppButton from '../components/appButton';
 import StarRating from '../components/starRating';
 
-type LibraryStatus = 'watched' | 'wishlist' | 'none';
-
 export default function MovieDetailPage() {
-  const router = useRouter();
-  const { movieId, imdbId } = useLocalSearchParams<{ movieId?: string, imdbId?: string }>();
-
-  const [movie, setMovie] = useState<Movie | null>(null);
+  const { movieId, imdbId } = useLocalSearchParams();
+  const [movie, setMovie] = useState<TMDbMovie | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Para os botões
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 'watched', 'wishlist', ou 'none'
-  const [libraryStatus, setLibraryStatus] = useState<LibraryStatus>('none');
-  // TODO: Carregar/Salvar esta informação
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWatched, setIsWatched] = useState(false);
   const [userRating, setUserRating] = useState(0);
-  const [userComment, setUserComment] = useState('');
+  const [userNotes, setUserNotes] = useState('');
+  const [isReviewSaved, setIsReviewSaved] = useState(false);
+  const [isEditingReview, setIsEditingReview] = useState(false);
 
-  // Carrega os dados do filme e o status da biblioteca
- useEffect(() => {
-    const loadMovieData = async () => {
+  useEffect(() => {
+    const load = async () => {
       setLoading(true);
       try {
-        let movieData: Movie | null = null;
+        let movieData: TMDbMovie | null = null;
 
-        // [CORREÇÃO]: Lógica para carregar por qualquer um dos IDs
-        if (movieId) {
-          // Se veio da Home, Busca, Categorias (com TMDb ID)
-          console.log(`[movieDetail] Carregando por TMDb ID: ${movieId}`);
-          movieData = await getMovieTMDbDetails(movieId);
-        } else if (imdbId) {
-          // Se veio do Perfil (com IMDb ID)
-          console.log(`[movieDetail] Carregando por IMDb ID: ${imdbId}`);
-          movieData = await getMovieByIMDbId(imdbId);
-        } else {
-          throw new Error("Nenhum ID de filme fornecido.");
+        const currentMovieId = Array.isArray(movieId) ? movieId[0] : movieId;
+        const currentImdbId = Array.isArray(imdbId) ? imdbId[0] : imdbId;
+
+        if (currentMovieId) {
+            movieData = (await getMovieTMDbDetails(currentMovieId)) as unknown as TMDbMovie;
+        } else if (currentImdbId) {
+            movieData = (await getMovieByIMDbId(currentImdbId)) as unknown as TMDbMovie;
         }
-        
-        setMovie(movieData);
 
-        // Se o filme foi carregado E tem um ID do IMDb, busca na biblioteca
-        const finalImdbId = movieData?.external_ids?.imdb_id || imdbId;        
+        if (movieData) {
+          movieData.poster = movieData.poster || '';
+          movieData.genres = movieData.genres || [];
+          movieData.credits = movieData.credits || { cast: [], crew: [] };
+          
+          movieData.external_ids = movieData.external_ids || { imdb_id: undefined };
 
-        if (finalImdbId) { 
-          console.log(`[movieDetail] Verificando status da biblioteca para: ${finalImdbId}`);
-          // Busca no backend se esse filme já está salvo
-          const libraryEntry = await getLibraryEntry(finalImdbId);
-          if (libraryEntry !== null) {
-            // SE ESTIVER, ATUALIZA O ESTADO!
-            setLibraryStatus(libraryEntry.status); 
-            console.log(`[movieDetail] Status encontrado: ${libraryEntry.status}`);
-          } else {
-            console.log(`[movieDetail] Filme não encontrado na biblioteca.`);
+          setMovie(movieData);
+
+          const idToCheck = movieData.external_ids?.imdb_id || currentImdbId || '';
+          
+          if (idToCheck) {
+            const lib = await getLibraryEntry(idToCheck);
+            if (lib) {
+              setIsWishlisted(lib.on_wishlist);
+              setIsWatched(lib.watched);
+              setUserRating(lib.rating || 0);
+              setUserNotes(lib.notes || '');
+              setIsReviewSaved(!!lib.rating || !!lib.notes);
+            } else {
+              setIsWishlisted(false);
+              setIsWatched(false);
+              setIsReviewSaved(false);
+            }
           }
-        } else {
-          console.warn(`[movieDetail] Não foi possível encontrar um IMDb ID para ${movieData?.title}. Os botões de status podem não funcionar.`);
         }
       } catch (error) {
-        console.error("Erro ao carregar dados do filme:", error);
+        console.error('Erro ao carregar filme ou biblioteca:', error);
       } finally {
         setLoading(false);
       }
     };
-    
-    loadMovieData();
+    load();
   }, [movieId, imdbId]);
 
-  // Ação de 'Já Assisti' ou 'Lista de Desejos'
-  const handleLibraryAction = async (newStatus: 'watched' | 'wishlist') => {
-    if (!movie || isSubmitting) return;
+  const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
+    if (!movie) return;
 
-    // Se o usuário clicar no mesmo botão, desmarca (vira 'none')
-    const finalStatus = (libraryStatus === newStatus) ? 'none' : newStatus;
-
-    console.log(`[movieDetail] Botão clicado. Novo status: ${finalStatus}`);
     setIsSubmitting(true);
     try {
-      await upsertMovieToLibrary(movie, finalStatus);
-      setLibraryStatus(finalStatus); // Atualiza o estado da UI instantaneamente
-    
-    } catch (error) {
-      console.error('[movieDetail] Falha ao salvar:', error);
-      if (error instanceof Error) {
-        Alert.alert("Erro ao Salvar", error.message);
-      } else {
-        Alert.alert("Erro ao Salvar", "Ocorreu um erro desconhecido.");
-      }
-    
+      
+      const response = await upsertMovieToLibrary(
+        movie as unknown as Movie, 
+        action,
+        userRating,
+        userNotes
+      );
+
+      setIsWishlisted(response.on_wishlist);
+      setIsWatched(response.watched);
+      setUserRating(response.rating || 0);
+      setUserNotes(response.notes || '');
+      setIsReviewSaved(!!response.rating || !!response.notes);
+      if (action === 'watched') setIsEditingReview(false);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  // TODO: Conectar esta função
-  const handleSaveReview = () => {
+
+  const saveReview = async () => {
+    if (!movie) return;
     if (userRating === 0) {
-      Alert.alert('Por favor, selecione uma nota antes de salvar.');
+      Alert.alert('Selecione uma nota.');
       return;
     }
-    console.log(`Avaliação salva para "${movie?.title}": Nota ${userRating}/5, Comentário: ${userComment}`);
-    Alert.alert('Sua avaliação foi salva!');
+
+    setIsSubmitting(true);
+    try {
+      const response = await upsertMovieToLibrary(
+        movie as unknown as Movie,
+        'watched',
+        userRating,
+        userNotes
+      );
+      setUserRating(response.rating || 0);
+      setUserNotes(response.notes || '');
+      setIsReviewSaved(true);
+      setIsEditingReview(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startEditingReview = () => {
+    setIsEditingReview(true);
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color={COLORS.primary} style={styles.centered} />;
+    return (
+      <ActivityIndicator
+        style={styles.centered}
+        size="large"
+        color={COLORS.primary}
+      />
+    );
   }
 
-  
- if (!movie) {
+  if (!movie) {
     return (
       <SafeAreaView style={styles.centered}>
-        <Stack.Screen options={{ title: 'Erro' }} />
         <Text style={styles.errorText}>Filme não encontrado.</Text>
       </SafeAreaView>
     );
   }
-  // Define o estado dos botões
-  const isWishlisted = libraryStatus === 'wishlist';
-  const isWatched = libraryStatus === 'watched';
+
+  const genres = movie.genres?.map((g) => g.name).join(', ') || 'N/A';
+  
+  const releaseYear = movie.release_date
+    ? new Date(movie.release_date).getFullYear()
+    : 'N/A';
+    
+  const director =
+    (movie.credits?.crew as CrewMember[])
+      ?.find((c) => c.job === 'Director')
+      ?.name || 'N/A';
+      
+  const actors =
+    (movie.credits?.cast as CastMember[])
+      ?.slice(0, 5)
+      .map((c) => c.name)
+      .join(', ') || 'N/A';
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: movie.title || 'Detalhes' }} />
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <Stack.Screen options={{ title: movie.title }} />
+      <ScrollView>
         <Image source={{ uri: movie.poster }} style={styles.poster} />
         <View style={styles.content}>
           <Text style={styles.title}>{movie.title}</Text>
-          
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Ionicons name="star" color={COLORS.accent} size={18} />
+          <Text style={styles.subInfo}>
+            {releaseYear} • {genres}
+          </Text>
+          <Text style={styles.subInfo}>Diretor: {director}</Text>
+          <Text style={styles.subInfo}>Elenco: {actors}</Text>
+
+          {movie.rating && (
+            <View style={styles.infoRow}>
+              <Ionicons name="star" size={18} color={COLORS.accent} />
               <Text style={styles.infoText}>{movie.rating}</Text>
             </View>
-            {/* TODO: Adicionar Ano, Duração, etc. */}
-          </View>
+          )}
 
           {movie.synopsis && (
-            <>
-              <Text style={styles.sectionTitle}>Sinopse</Text>
-              <Text style={styles.synopsis}>{movie.synopsis}</Text>
-            </>
+            <Text style={styles.synopsis}>{movie.synopsis}</Text>
           )}
 
           <View style={styles.buttonContainer}>
-             <TouchableOpacity 
-                style={[styles.actionButton, isWishlisted ? styles.wishlistButtonPressed : styles.wishlistButton]}
-                onPress={() => handleLibraryAction('wishlist')}
-                disabled={isSubmitting}
-             >
-                <Ionicons name={isWishlisted ? "bookmark" : "bookmark-outline"} size={22} color={isWishlisted ? COLORS.background : COLORS.textPrimary} />
-                <Text style={[styles.actionButtonText, isWishlisted && { color: COLORS.background }]}>
-                  {isWishlisted ? "Na Lista" : "Lista"}
-                </Text>
-             </TouchableOpacity>
-             
-             <TouchableOpacity
-                style={[styles.actionButton, isWatched ? styles.watchedButtonPressed : styles.watchedButton]}
-                onPress={() => handleLibraryAction('watched')}
-                disabled={isSubmitting}
-             >
-                <Ionicons name={isWatched ? "checkmark-circle" : "checkmark-circle-outline"} size={22} color={isWatched ? COLORS.background : COLORS.textPrimary} />
-                <Text style={[styles.actionButtonText, isWatched && { color: COLORS.background }]}>
-                  {isWatched ? "Assistido" : "Assisti"}
-                </Text>
-             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                isWishlisted ? styles.activeWishlist : styles.wishlist,
+              ]}
+              onPress={() => handleLibraryAction('wishlist')}
+              disabled={isSubmitting}
+            >
+              <Ionicons
+                name={isWishlisted ? 'bookmark' : 'bookmark-outline'}
+                size={22}
+                color={isWishlisted ? COLORS.background : COLORS.textPrimary}
+              />
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  isWishlisted && { color: COLORS.background },
+                ]}
+              >
+                {isWishlisted ? 'Na Lista' : 'Lista'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                isWatched ? styles.activeWatched : styles.watched,
+              ]}
+              onPress={() => handleLibraryAction('watched')}
+              disabled={isSubmitting}
+            >
+              <Ionicons
+                name={isWatched ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                size={22}
+                color={isWatched ? COLORS.background : COLORS.textPrimary}
+              />
+              <Text
+                style={[
+                  styles.actionButtonText,
+                  isWatched && { color: COLORS.background },
+                ]}
+              >
+                {isWatched ? 'Assistido' : 'Assistir'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {isWatched && (
             <View style={styles.reviewContainer}>
-              <Text style={styles.sectionTitle}>Sua Avaliação</Text>
-              <StarRating rating={userRating} onRatingChange={setUserRating} />
-              <View style={{ height: 20 }} />
-              <AppTextInput
-                label="Deixe seu comentário (opcional)"
-                placeholder="O que você achou do filme?"
-                value={userComment}
-                onChangeText={setUserComment}
-                multiline
-              />
-              <AppButton title="Salvar Avaliação" onPress={handleSaveReview} />
+              {!isReviewSaved || isEditingReview ? (
+                <>
+                  <StarRating
+                    rating={userRating}
+                    onRatingChange={setUserRating}
+                    disabled={false}
+                  />
+                  <AppTextInput
+                    multiline
+                    label="Comentário"
+                    value={userNotes}
+                    onChangeText={setUserNotes}
+                    editable={!isReviewSaved || isEditingReview}
+                  />
+                  <View style={{ height: 10 }} />
+                  <AppButton title="Salvar Avaliação" onPress={saveReview} />
+                </>
+              ) : (
+                <>
+                  <Text style={styles.staticRating}>
+                    {userRating} <Ionicons name="star" color={COLORS.accent} size={16} />
+                    
+                  </Text>
+                  <Text style={styles.staticComment}>{userNotes}</Text>
+                  <View style={{ height: 10 }} />
+                  <AppButton title="Editar Avaliação" onPress={startEditingReview} />
+                </>
+              )}
             </View>
           )}
         </View>
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
-  errorText: { color: 'red', fontSize: 18 },
-  poster: { width: '100%', height: 400, resizeMode: 'cover' },
-  content: { padding: 20, marginTop: -30, borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: COLORS.background },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: 'red' },
+  poster: { width: '100%', height: 400 },
+  content: { padding: 20, marginTop: -20 },
   title: { color: COLORS.textPrimary, fontSize: 28, fontWeight: 'bold' },
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, flexWrap: 'wrap' },
-  infoItem: { flexDirection: 'row', alignItems: 'center', marginRight: 20, marginBottom: 10 },
+  subInfo: { color: COLORS.textSecondary, marginTop: 5 },
+  infoRow: { flexDirection: 'row', marginTop: 10 },
   infoText: { color: COLORS.textSecondary, marginLeft: 5 },
-  sectionTitle: { color: COLORS.textPrimary, fontSize: 20, fontWeight: 'bold', marginTop: 25, marginBottom: 10 },
-  synopsis: { color: COLORS.textSecondary, fontSize: 15, lineHeight: 22 },
-  buttonContainer: { flexDirection: 'row', marginTop: 30, justifyContent: 'space-between' },
-  actionButton: { flex: 1, flexDirection: 'row', padding: 15, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  wishlistButton: { backgroundColor: COLORS.surface, marginRight: 10 },
-  wishlistButtonPressed: { backgroundColor: COLORS.accent, marginRight: 10 }, // Botão "Lista" pressionado
-  watchedButton: { backgroundColor: COLORS.surface, marginLeft: 10 },
-  watchedButtonPressed: { backgroundColor: COLORS.primary, marginLeft: 10 }, // Botão "Assisti" pressionado
-  actionButtonText: { color: COLORS.textPrimary, fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
-  reviewContainer: { marginTop: 30, paddingTop: 20, borderTopWidth: 1, borderTopColor: COLORS.border },
+  synopsis: { color: COLORS.textSecondary, fontSize: 15, marginTop: 10 },
+  buttonContainer: { flexDirection: 'row', marginTop: 30 },
+  actionButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  wishlist: { backgroundColor: COLORS.surface, marginRight: 10 },
+  activeWishlist: { backgroundColor: COLORS.accent, marginRight: 10 },
+  watched: { backgroundColor: COLORS.surface, marginLeft: 10 },
+  activeWatched: { backgroundColor: COLORS.primary, marginLeft: 10 },
+  actionButtonText: { marginLeft: 10, fontSize: 16 },
+  reviewContainer: { marginTop: 20 },
+  staticRating: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
+  staticComment: { color: COLORS.textSecondary, fontSize: 15 },
 });

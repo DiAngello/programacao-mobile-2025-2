@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { COLORS } from '../../constants/colors';
 import { useRouter, Href } from 'expo-router';
-// Importa o serviço e o tipo
 import { getGenres } from '../../services/movieService';
 import { Genre } from '../../types';
 
@@ -11,7 +10,6 @@ export default function CategoriesPage() {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Busca os gêneros reais da API ao carregar a tela
   useEffect(() => {
     const loadGenres = async () => {
       setLoading(true);
@@ -23,8 +21,6 @@ export default function CategoriesPage() {
   }, []);
 
   const handlePressCategory = (genre: Genre) => {
-    // Passa o ID do gênero pela rota e o NOME pela query param
-    // A tela de destino será /category/[id] (ex: /category/28?name=Ação)
     const path = `/category/${genre.id}?name=${genre.name}`;
     router.push(path as Href);
   };
@@ -42,7 +38,7 @@ export default function CategoriesPage() {
       <View style={styles.header}><Text style={styles.headerTitle}>Categorias</Text></View>
       <FlatList
         data={genres}
-        keyExtractor={item => item.id.toString()} // IDs agora são números
+        keyExtractor={item => item.id.toString()} 
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.categoryItem} onPress={() => handlePressCategory(item)}>
             <Text style={styles.categoryText}>{item.name}</Text>
