@@ -19,7 +19,7 @@ const MovieRow: React.FC<MovieRowProps> = ({ category, onMoviePress }) => {
       <Text style={styles.title}>{category.title}</Text>
       <FlatList
         data={category.movies}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item?.id?.toString() || index.toString()}
         renderItem={({ item }) => (
           <MovieCard movie={item} onPress={() => onMoviePress(item)} />
         )}
