@@ -39,7 +39,7 @@ class TmdbController {
 
   try {
     const response = await tmdbApi.get(`/movie/${tmdb_id}`, {
-      params: { append_to_response: 'external_ids,credits' }
+      params: { append_to_response: 'external_ids,credits,videos' }
     });
 
     const movie = response.data;

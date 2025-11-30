@@ -2,6 +2,14 @@ import api from './api';
 import { Movie, Category, Genre } from '../types';
 import { isAxiosError } from 'axios';
 
+const GENRES = {
+  ACTION: '28',
+  COMEDY: '35',
+  SCIFI: '878',
+  ANIMATION: '16',
+  DRAMA: '18'
+};
+
 const mapTMDbMovie = (apiMovie: any): Movie => {
   return {
     ...apiMovie,
@@ -19,33 +27,51 @@ const mapLibraryMovie = (dbMovie: any): Movie => {
       : `https://image.tmdb.org/t/p/w500${dbMovie.poster_url}`,
     synopsis: dbMovie.synopsis || 'Sem sinopse',
     rating: dbMovie.public_rating?.toString()
-     || dbMovie.vote_average?.toFixed?.(1)
-     || 'N/A'
+      || dbMovie.vote_average?.toFixed?.(1)
+      || 'N/A'
 
   };
 };
 
 export const getHomeData = async (): Promise<{ featured: Movie; categories: Category[] }> => {
   try {
-    const [wishlist, watched, popular] = await Promise.all([
+    const [wishlist, watched, popular, action, scifi, comedy, animation] = await Promise.all([
       api.get('/library/wishlist'),
       api.get('/library/watched'),
-      api.get('/movies/popular')
+      api.get('/movies/popular'),
+      api.get('/movies/discover', { params: { genreId: GENRES.ACTION } }),
+      api.get('/movies/discover', { params: { genreId: GENRES.SCIFI } }),
+      api.get('/movies/discover', { params: { genreId: GENRES.COMEDY } }),
+      api.get('/movies/discover', { params: { genreId: GENRES.ANIMATION } }),
     ]);
 
     const wishlistMovies = wishlist.data.map(mapLibraryMovie);
     const watchedMovies = watched.data.map(mapLibraryMovie);
     const popularMovies = popular.data.map(mapTMDbMovie);
+    
+    const actionMovies = action.data.map(mapTMDbMovie);
+    const scifiMovies = scifi.data.map(mapTMDbMovie);
+    const comedyMovies = comedy.data.map(mapTMDbMovie);
+    const animationMovies = animation.data.map(mapTMDbMovie);
+
+    const featured = popularMovies[0] || ({} as Movie);
+
+    const categories: Category[] = [
+      { id: 'wishlist', title: 'Minha Lista', movies: wishlistMovies },
+      { id: 'watched', title: 'Assistidos', movies: watchedMovies },
+      { id: 'populares', title: 'Populares', movies: popularMovies },
+      { id: 'action', title: 'Ação e Aventura', movies: actionMovies },
+      { id: 'scifi', title: 'Ficção Científica', movies: scifiMovies },
+      { id: 'animation', title: 'Animação', movies: animationMovies },
+      { id: 'comedy', title: 'Comédia', movies: comedyMovies },
+    ];
 
     return {
-      featured: popularMovies[0] || ({} as Movie),
-      categories: [
-        { id: 'populares', title: 'Populares', movies: popularMovies },
-        { id: 'wishlist', title: 'Minha Lista', movies: wishlistMovies },
-        { id: 'watched', title: 'Assistidos', movies: watchedMovies }
-      ]
+      featured,
+      categories
     };
-  } catch {
+  } catch (error) {
+    console.error("Erro ao carregar home:", error);
     return { featured: {} as Movie, categories: [] };
   }
 };
@@ -63,20 +89,26 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
 export const getMovieTMDbDetails = async (tmdbId: string): Promise<any | null> => {
   try {
     const response = await api.get(`/movies/details/${tmdbId}`);
+    const data = response.data;
+
+    const videos = data.videos?.results || [];
+    const trailer = videos.find((v: any) => v.site === 'YouTube' && v.type === 'Trailer') 
+                 || videos.find((v: any) => v.site === 'YouTube'); 
 
     return {
-      ...response.data,
-      poster: response.data.poster_path
-        ? `https://image.tmdb.org/t/p/w500${response.data.poster_path}`
+      ...data,
+      poster: data.poster_path
+        ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
         : '',
-      synopsis: response.data.overview,
-      rating: response.data.vote_average?.toFixed(1) || 'N/A',
+      synopsis: data.overview,
+      rating: data.vote_average?.toFixed(1) || 'N/A',
+      // Adicionamos o link do trailer aqui
+      trailer_url: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null
     };
   } catch {
     return null;
   }
 };
-
 
 export const getGenres = async (): Promise<Genre[]> => {
   try {

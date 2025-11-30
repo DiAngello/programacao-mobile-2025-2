@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Linking, // IMPORTANTE: Importar Linking para abrir URLs
 } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,6 @@ import { COLORS } from '../constants/colors';
 import {
   Movie,
   TMDbMovie,
-  TMDbCredits,
   CrewMember,
   CastMember,
 } from '../types';
@@ -34,7 +34,8 @@ import StarRating from '../components/starRating';
 
 export default function MovieDetailPage() {
   const { movieId, imdbId } = useLocalSearchParams();
-  const [movie, setMovie] = useState<TMDbMovie | null>(null);
+  // 'any' permite acessar propriedades dinâmicas como trailer_url
+  const [movie, setMovie] = useState<any | null>(null); 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,23 +50,36 @@ export default function MovieDetailPage() {
     const load = async () => {
       setLoading(true);
       try {
-        let movieData: TMDbMovie | null = null;
+        let movieData: any | null = null;
 
         const currentMovieId = Array.isArray(movieId) ? movieId[0] : movieId;
         const currentImdbId = Array.isArray(imdbId) ? imdbId[0] : imdbId;
 
         if (currentMovieId) {
-            movieData = (await getMovieTMDbDetails(currentMovieId)) as unknown as TMDbMovie;
+            movieData = await getMovieTMDbDetails(currentMovieId);
         } else if (currentImdbId) {
-            movieData = (await getMovieByIMDbId(currentImdbId)) as unknown as TMDbMovie;
+            movieData = await getMovieByIMDbId(currentImdbId);
         }
 
         if (movieData) {
           movieData.poster = movieData.poster || '';
           movieData.genres = movieData.genres || [];
           movieData.credits = movieData.credits || { cast: [], crew: [] };
-          
           movieData.external_ids = movieData.external_ids || { imdb_id: undefined };
+
+          // === CORREÇÃO: Buscar trailer fresco se o filme salvo não tiver ===
+          if (!movieData.trailer_url && movieData.id) {
+            try {
+              // Tenta buscar detalhes frescos no TMDb usando o ID
+              const freshData = await getMovieTMDbDetails(String(movieData.id));
+              if (freshData?.trailer_url) {
+                movieData.trailer_url = freshData.trailer_url;
+              }
+            } catch (err) {
+              console.log('Não foi possível recuperar o trailer fresco:', err);
+            }
+          }
+          // ================================================================
 
           setMovie(movieData);
 
@@ -95,7 +109,7 @@ export default function MovieDetailPage() {
     load();
   }, [movieId, imdbId]);
 
-const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
+  const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
     if (!movie) return;
     setIsSubmitting(true);
 
@@ -127,6 +141,7 @@ const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
   };
 
   const saveReview = async () => {
+    if (isSubmitting) return; // Previne múltiplos cliques manualmente
     if (!movie) return;
     if (userRating === 0) {
       Alert.alert('Selecione uma nota.');
@@ -154,6 +169,16 @@ const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
     setIsEditingReview(true);
   };
 
+  // --- LÓGICA DO BOTÃO ---
+  // Apenas abre o link oficial (se existir)
+  const openTrailer = () => {
+    if (movie?.trailer_url) {
+      Linking.openURL(movie.trailer_url);
+    } else {
+      Alert.alert('Ops', 'Trailer não disponível para este filme.');
+    }
+  };
+
   if (loading) {
     return (
       <ActivityIndicator
@@ -172,7 +197,7 @@ const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
     );
   }
 
-  const genres = movie.genres?.map((g) => g.name).join(', ') || 'N/A';
+  const genres = movie.genres?.map((g: any) => g.name).join(', ') || 'N/A';
   
   const releaseYear = movie.release_date
     ? new Date(movie.release_date).getFullYear()
@@ -207,6 +232,14 @@ const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
               <Ionicons name="star" size={18} color={COLORS.accent} />
               <Text style={styles.infoText}>{movie.rating}</Text>
             </View>
+          )}
+
+          {/* BOTÃO DO TRAILER - SÓ APARECE SE TIVER LINK (Recuperado via API ou Banco) */}
+          {movie.trailer_url && (
+            <TouchableOpacity style={styles.trailerButton} onPress={openTrailer}>
+              <Ionicons name="logo-youtube" size={24} color={COLORS.textPrimary} />
+              <Text style={styles.trailerButtonText}>Assistir Trailer</Text>
+            </TouchableOpacity>
           )}
 
           {movie.synopsis && (
@@ -264,7 +297,7 @@ const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
           {isWatched && (
             <View style={styles.reviewContainer}>
               {!isReviewSaved || isEditingReview ? (
-                <>
+                <View>
                   <StarRating
                     rating={userRating}
                     onRatingChange={setUserRating}
@@ -278,18 +311,24 @@ const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
                     editable={!isReviewSaved || isEditingReview}
                   />
                   <View style={{ height: 10 }} />
-                  <AppButton title="Salvar Avaliação" onPress={saveReview} />
-                </>
+                  <AppButton 
+                    title={isSubmitting ? "Salvando..." : "Salvar Avaliação"} 
+                    onPress={saveReview}
+                  />
+                </View>
               ) : (
-                <>
+                <View>
                   <Text style={styles.staticRating}>
-                    {userRating} <Ionicons name="star" color={COLORS.accent} size={16} />
-                    
+                    Sua nota: {userRating} <Ionicons name="star" color={COLORS.accent} size={16} />
                   </Text>
-                  <Text style={styles.staticComment}>{userNotes}</Text>
-                  <View style={{ height: 10 }} />
+                  {userNotes ? (
+                    <Text style={styles.staticComment}>{userNotes}</Text>
+                  ) : (
+                    <Text style={styles.staticComment}>Sem comentários.</Text>
+                  )}
+                  <View style={{ height: 15 }} />
                   <AppButton title="Editar Avaliação" onPress={startEditingReview} />
-                </>
+                </View>
               )}
             </View>
           )}
@@ -307,9 +346,28 @@ const styles = StyleSheet.create({
   content: { padding: 20, marginTop: -20 },
   title: { color: COLORS.textPrimary, fontSize: 28, fontWeight: 'bold' },
   subInfo: { color: COLORS.textSecondary, marginTop: 5 },
-  infoRow: { flexDirection: 'row', marginTop: 10 },
+  infoRow: { flexDirection: 'row', marginTop: 10, alignItems: 'center' },
   infoText: { color: COLORS.textSecondary, marginLeft: 5 },
-  synopsis: { color: COLORS.textSecondary, fontSize: 15, marginTop: 10 },
+  synopsis: { color: COLORS.textSecondary, fontSize: 15, marginTop: 15, lineHeight: 22 },
+  
+  // Estilo do botão do Trailer (Atualizado para combinar com a Home)
+  trailerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 148, 158, 0.4)', // Mesmo estilo da Home
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    marginTop: 15,
+    alignSelf: 'flex-start',
+  },
+  trailerButtonText: {
+    color: COLORS.textPrimary, // Cor do texto padrão
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+
   buttonContainer: { flexDirection: 'row', marginTop: 30 },
   actionButton: {
     flex: 1,
@@ -324,7 +382,7 @@ const styles = StyleSheet.create({
   watched: { backgroundColor: COLORS.surface, marginLeft: 10 },
   activeWatched: { backgroundColor: COLORS.primary, marginLeft: 10 },
   actionButtonText: { marginLeft: 10, fontSize: 16 },
-  reviewContainer: { marginTop: 20 },
-  staticRating: { fontSize: 18, fontWeight: 'bold', marginBottom: 5 },
-  staticComment: { color: COLORS.textSecondary, fontSize: 15 },
+  reviewContainer: { marginTop: 20, paddingBottom: 40 },
+  staticRating: { fontSize: 18, fontWeight: 'bold', marginBottom: 5, color: COLORS.textPrimary },
+  staticComment: { color: COLORS.textSecondary, fontSize: 15, fontStyle: 'italic' },
 });

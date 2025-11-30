@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, ImageBackground, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, ImageBackground, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../../constants/colors';
 import { Movie, Category } from '../../types';
-import { getHomeData } from '../../services/movieService';
+import { getHomeData, getMovieTMDbDetails } from '../../services/movieService';
 import MovieRow from '../../components/movieRow';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -46,6 +46,31 @@ export default function HomePage() {
   Alert.alert('Erro', 'Não foi possível localizar o filme.');
 };
 
+  const openHeroTrailer = async () => {
+    if (!featuredMovie) return;
+
+    let url = (featuredMovie as any).trailer_url;
+
+    if (!url && (featuredMovie.id || featuredMovie.tmdb_id)) {
+      try {
+        const id = featuredMovie.id || featuredMovie.tmdb_id;
+        const details = await getMovieTMDbDetails(String(id));
+        
+        if (details?.trailer_url) {
+          url = details.trailer_url;
+          setFeaturedMovie(prev => prev ? ({ ...prev, trailer_url: url } as any) : prev);
+        }
+      } catch (error) {
+        console.log('Erro ao buscar trailer do hero:', error);
+      }
+    }
+
+    if (url) {
+      Linking.openURL(url);
+    } else {
+      Alert.alert('Indisponível', 'Trailer não encontrado na API.');
+    }
+  };
 
   const renderHeroHeader = () => {
     if (!featuredMovie) return null;
@@ -56,13 +81,22 @@ export default function HomePage() {
         <ImageBackground 
           source={{ uri: `https://image.tmdb.org/t/p/w500${featuredMovie.poster_path}` }} 
           style={styles.heroImage}
+          resizeMode="cover" 
         >
           <LinearGradient colors={['transparent', 'rgba(0,0,0,0.6)', COLORS.background]} style={styles.heroOverlay}>
             <Text style={styles.heroTitle}>{featuredMovie.title}</Text>
             {featuredMovie.overview && <Text style={styles.heroSynopsis} numberOfLines={2}>{featuredMovie.overview}</Text>}
+            
             <View style={styles.heroButtonRow}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => handleMoviePress(featuredMovie)}>
-                <Ionicons name="information-circle-outline" size={20} color={COLORS.textPrimary} />
+              {/* Botão Assistir Trailer */}
+              <TouchableOpacity style={styles.secondaryButton} onPress={openHeroTrailer}>
+                <Ionicons name="play-circle-outline" size={24} color={COLORS.textPrimary} />
+                <Text style={styles.secondaryButtonText}>Trailer</Text>
+              </TouchableOpacity>
+
+              {/* Botão Saiba Mais */}
+              <TouchableOpacity style={[styles.secondaryButton, { marginLeft: 10 }]} onPress={() => handleMoviePress(featuredMovie)}>
+                <Ionicons name="information-circle-outline" size={24} color={COLORS.textPrimary} />
                 <Text style={styles.secondaryButtonText}>Saiba mais</Text>
               </TouchableOpacity>
             </View>
@@ -94,12 +128,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   heroContainer: { height: 450, marginBottom: 20 },
   heroImage: { width: '100%', height: '100%', justifyContent: 'flex-end' },
-  heroOverlay: { width: '100%', height: '60%', justifyContent: 'flex-end', padding: 20 },
-  heroTitle: { color: COLORS.textPrimary, fontSize: 36, fontWeight: 'bold' },
-  heroSynopsis: { color: COLORS.textSecondary, fontSize: 14, marginVertical: 10, width: '80%' },
-  heroButtonRow: { flexDirection: 'row', marginTop: 10 },
-  primaryButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.textPrimary, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 5 },
-  primaryButtonText: { color: COLORS.background, fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
-  secondaryButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(139, 148, 158, 0.4)', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 5, marginLeft: 15 },
+  heroOverlay: { width: '100%', height: '100%', justifyContent: 'flex-end', padding: 20 }, 
+  heroTitle: { color: COLORS.textPrimary, fontSize: 36, fontWeight: 'bold', marginBottom: 8 },
+  heroSynopsis: { color: COLORS.textSecondary, fontSize: 14, marginBottom: 20, width: '90%' },
+  heroButtonRow: { flexDirection: 'row', alignItems: 'center' },
+  secondaryButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(139, 148, 158, 0.4)', 
+    paddingVertical: 10, 
+    paddingHorizontal: 20, 
+    borderRadius: 5 
+  },
   secondaryButtonText: { color: COLORS.textPrimary, fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
 });

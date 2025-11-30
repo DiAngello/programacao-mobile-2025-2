@@ -7,6 +7,8 @@ import { getMoviesByCategory, searchMoviesByCategory } from '../../services/movi
 import PosterCard from '../../components/posterCard';
 
 export default function CategoryResultsPage() {
+  const router = useRouter();
+  
   const { id, name } = useLocalSearchParams<{ id: string; name: string }>();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,17 @@ export default function CategoryResultsPage() {
           data={movies}
           keyExtractor={(item) => item.id.toString()}
           numColumns={3}
-          renderItem={({ item }) => <PosterCard movie={item} onPress={() => {}} />}
+          renderItem={({ item }) => (
+            <PosterCard 
+              movie={item} 
+              onPress={() => {
+                router.push({
+                  pathname: '/movieDetail', 
+                  params: { movieId: item.id } 
+                });
+              }} 
+            />
+          )}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={<Text style={styles.emptyText}>Nenhum filme encontrado.</Text>}
