@@ -102,10 +102,17 @@ class LibraryController {
         include: [{
           model: Movie,
           attributes: ['imdb_id', 'title', 'poster_url', 'publicRating']
-        }]
+        }],
+        attributes: ['rating', 'notes'] // <-- adicionado
       });
 
-      return res.json(movies.map(m => m.Movie));
+      return res.json(
+        movies.map(m => ({
+          ...m.Movie.dataValues,
+          rating: m.rating,
+          notes: m.notes
+        }))
+      );
     } catch (error) {
       return res.status(500).json({ error: 'Erro ao buscar assistidos.', details: error.message });
     }

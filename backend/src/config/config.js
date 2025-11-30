@@ -1,21 +1,30 @@
-// Carrega as variáveis do arquivo .env (ex: DB_URL)
 require('dotenv').config();
 
 module.exports = {
   development: {
-    url: process.env.DB_URL,
-    dialect: 'postgres',
-  },
-  
-  test: {
-    url: process.env.DB_URL,
-    dialect: 'postgres',
-  },
-  production: {
-    url: process.env.DB_URL,
+    username: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
     dialect: 'postgres',
     dialectOptions: {
-      ssl: { 
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    }
+  },
+
+  production: {
+    username: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    dialect: 'postgres',
+    dialectOptions: {
+      ssl: {
         require: true,
         rejectUnauthorized: false
       }

@@ -18,7 +18,10 @@ const mapLibraryMovie = (dbMovie: any): Movie => {
       ? dbMovie.poster_url
       : `https://image.tmdb.org/t/p/w500${dbMovie.poster_url}`,
     synopsis: dbMovie.synopsis || 'Sem sinopse',
-    rating: dbMovie.publicRating?.toString() || 'N/A'
+    rating: dbMovie.publicRating?.toString()
+     || dbMovie.vote_average?.toFixed?.(1)
+     || 'N/A'
+
   };
 };
 
@@ -57,14 +60,23 @@ export const searchMovies = async (query: string): Promise<Movie[]> => {
   }
 };
 
-export const getMovieTMDbDetails = async (tmdbId: string): Promise<Movie | null> => {
+export const getMovieTMDbDetails = async (tmdbId: string): Promise<any | null> => {
   try {
     const response = await api.get(`/movies/details/${tmdbId}`);
-    return mapTMDbMovie(response.data);
+
+    return {
+      ...response.data,
+      poster: response.data.poster_path
+        ? `https://image.tmdb.org/t/p/w500${response.data.poster_path}`
+        : '',
+      synopsis: response.data.overview,
+      rating: response.data.vote_average?.toFixed(1) || 'N/A',
+    };
   } catch {
     return null;
   }
 };
+
 
 export const getGenres = async (): Promise<Genre[]> => {
   try {
@@ -140,7 +152,8 @@ export async function upsertMovieToLibrary(
       actors: movie.credits?.cast?.slice(0,5).map((a: any) => a.name).join(', '),
       director: movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name,
       rating,
-      notes
+      notes,
+      publicRating: movie.vote_average
     };
 
     const response = await api.post('/library/upsert', payload);
