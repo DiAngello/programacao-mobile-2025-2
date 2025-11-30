@@ -95,3 +95,21 @@ export const updateProfile = async (username: string, email: string, password?: 
     throw new Error('Não foi possível atualizar o perfil.');
   }
 };
+
+export const forgotPassword = async (email: string) => {
+  try {
+    const response = await api.post('/auth/forgot_password', { email });
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+  try {
+    const response = await api.post('/auth/resetPassword', { token, newPassword });
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
+};

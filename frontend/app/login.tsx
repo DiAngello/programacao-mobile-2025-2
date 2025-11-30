@@ -46,7 +46,6 @@ export default function LoginPage() {
   };
 
   const handleForgotPassword = () => router.push('/forgotPassword');
-  const handleGoogleLogin = () => console.log('Login com Google');
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -54,10 +53,6 @@ export default function LoginPage() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.welcomeText}>Seja bem vindo!</Text>
         <Text style={styles.subtitleText}>Efetue seu login</Text>
-
-        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
-          <Ionicons name="logo-google" size={24} color={COLORS.textPrimary} style={styles.googleIcon} />
-        </TouchableOpacity>
 
         <View style={styles.formContainer}>
           <AppAuthInput

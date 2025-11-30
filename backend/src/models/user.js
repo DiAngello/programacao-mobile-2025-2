@@ -32,6 +32,9 @@ module.exports = (sequelize, DataTypes) => {
     },
 
     password_hash: DataTypes.STRING,
+    
+    passwordResetToken: DataTypes.STRING,
+    passwordResetExpires: DataTypes.DATE,
 
     password: {
       type: DataTypes.VIRTUAL,

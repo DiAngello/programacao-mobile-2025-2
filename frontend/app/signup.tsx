@@ -62,10 +62,6 @@ export default function SignUpPage() {
         <Text style={styles.welcomeText}>Seja bem vindo!</Text>
         <Text style={styles.subtitleText}>Crie sua conta</Text>
 
-        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleRegister}>
-          <Ionicons name="logo-google" size={24} color={COLORS.textPrimary} />
-        </TouchableOpacity>
-
         <View style={styles.formContainer}>
           <AppAuthInput
             label="Nome"

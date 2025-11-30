@@ -22,6 +22,8 @@ router.post(
   ],
   authController.login 
 );
+router.post('/forgot_password', authController.forgotPassword);
+router.post('/reset_password', authController.resetPassword);
 router.get('/me', authMiddleware, authController.getProfile);
 router.put('/me', authMiddleware, authController.updateProfile);
 

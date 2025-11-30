@@ -1,9 +1,10 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const crypto = require('crypto'); // Adicionado para gerar tokens aleatórios
 
 /**
- * Controlador que gerencia o registro, login e perfil dos usuários.
+ * Controlador que gerencia o registro, login, perfil e recuperação de senha dos usuários.
  */
 class AuthController {
   async register(req, res) {
@@ -61,6 +62,76 @@ class AuthController {
   }
 
   /**
+   * Inicia o processo de redefinição de senha (Esqueci minha senha).
+   */
+  async forgotPassword(req, res) {
+    const { email } = req.body;
+
+    try {
+      const user = await User.findOne({ where: { email } });
+
+      if (!user) {
+        return res.json({ message: 'Se o email estiver cadastrado, você receberá um link de redefinição.' });
+      }
+
+      const token = crypto.randomBytes(20).toString('hex');
+      
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+
+      await user.update({ 
+        passwordResetToken: token, 
+        passwordResetExpires: now 
+      });
+
+      // 4. Simulação de envio de email (Log no console do servidor)
+      console.log(`
+        ===================================================
+        [RECUPERAÇÃO DE SENHA]
+        Para: ${email}
+        Token Gerado: ${token}
+        Link para resetar: http://localhost:8081/resetPassword?token=${token}
+        ===================================================
+      `);
+
+      return res.json({ message: 'Se o email estiver cadastrado, você receberá um link de redefinição.' });
+
+    } catch (error) {
+      console.error('Erro no forgotPassword:', error);
+      return res.status(500).json({ error: 'Erro ao processar solicitação de recuperação de senha.' });
+    }
+  }
+
+  async resetPassword(req, res) {
+    const { token, newPassword } = req.body;
+
+    try {
+      const user = await User.findOne({
+        where: {
+          passwordResetToken: token,
+          passwordResetExpires: { [Op.gt]: new Date() } 
+        }
+      });
+
+      if (!user) {
+        return res.status(400).json({ error: 'Token inválido ou expirado.' });
+      }
+
+      await user.update({
+        password: newPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null
+      });
+
+      return res.json({ message: 'Senha alterada com sucesso!' });
+
+    } catch (error) {
+      console.error('Erro no resetPassword:', error);
+      return res.status(500).json({ error: 'Erro ao redefinir senha.' });
+    }
+  }
+
+  /**
    * Busca e retorna os dados do perfil do usuário atualmente logado.
    */
   async getProfile(req, res) {
@@ -94,7 +165,9 @@ class AuthController {
 
       const updateData = { username, email };
       if (password) {
-        updateData.password_hash = password; 
+        // Nota: Certifique-se de que seu Model User tem hooks (beforeUpdate) 
+        // para hashear essa senha antes de salvar, ou use a lógica de hash aqui.
+        updateData.password = password; 
       }
 
       await user.update(updateData);
