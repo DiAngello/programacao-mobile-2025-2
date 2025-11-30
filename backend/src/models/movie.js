@@ -36,7 +36,7 @@ module.exports = (sequelize, DataTypes) => {
   genres: DataTypes.ARRAY(DataTypes.STRING),
   actors: DataTypes.TEXT,
   director: DataTypes.STRING,
-  publicRating: DataTypes.STRING
+  public_rating: DataTypes.STRING
   }, {
     sequelize,
     modelName: 'Movie'

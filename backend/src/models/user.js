@@ -25,11 +25,23 @@ module.exports = (sequelize, DataTypes) => {
 
   User.init({
     username: DataTypes.STRING,
+
     email: {
       type: DataTypes.STRING,
       unique: true
     },
-    password_hash: DataTypes.STRING
+
+    password_hash: DataTypes.STRING,
+
+    password: {
+      type: DataTypes.VIRTUAL,
+      set(value) {
+        this.setDataValue('password', value);
+        const hash = bcrypt.hashSync(value, 10);
+        this.setDataValue('password_hash', hash);
+      }
+    }
+
   }, {
     sequelize,
     modelName: 'User'

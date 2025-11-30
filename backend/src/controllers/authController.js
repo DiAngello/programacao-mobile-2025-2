@@ -12,7 +12,7 @@ class AuthController {
       const user = await User.create({ 
         username, 
         email, 
-        password_hash: password
+        password
       });
 
       const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {

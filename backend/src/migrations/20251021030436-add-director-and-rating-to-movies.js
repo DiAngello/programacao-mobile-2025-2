@@ -5,13 +5,13 @@ module.exports = {
       type: Sequelize.STRING,
       allowNull: true,
     });
-    await queryInterface.addColumn('Movies', 'publicRating', {
+    await queryInterface.addColumn('Movies', 'public_rating', {
       type: Sequelize.STRING, 
       allowNull: true,
     });
   },
   async down(queryInterface, Sequelize) {
     await queryInterface.removeColumn('Movies', 'director');
-    await queryInterface.removeColumn('Movies', 'publicRating');
+    await queryInterface.removeColumn('Movies', 'public_rating');
   }
 };

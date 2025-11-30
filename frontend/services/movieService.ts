@@ -18,7 +18,7 @@ const mapLibraryMovie = (dbMovie: any): Movie => {
       ? dbMovie.poster_url
       : `https://image.tmdb.org/t/p/w500${dbMovie.poster_url}`,
     synopsis: dbMovie.synopsis || 'Sem sinopse',
-    rating: dbMovie.publicRating?.toString()
+    rating: dbMovie.public_rating?.toString()
      || dbMovie.vote_average?.toFixed?.(1)
      || 'N/A'
 
@@ -153,7 +153,9 @@ export async function upsertMovieToLibrary(
       director: movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name,
       rating,
       notes,
-      publicRating: movie.vote_average
+      public_rating: movie.vote_average
+        ? Number(movie.vote_average).toFixed(1)
+        : null
     };
 
     const response = await api.post('/library/upsert', payload);

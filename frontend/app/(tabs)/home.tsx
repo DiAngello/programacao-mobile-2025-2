@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, ActivityIndicator, ImageBackground, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,8 @@ import { COLORS } from '../../constants/colors';
 import { Movie, Category } from '../../types';
 import { getHomeData } from '../../services/movieService';
 import MovieRow from '../../components/movieRow';
+import { useFocusEffect } from '@react-navigation/native';
+
 
 export default function HomePage() {
   const router = useRouter();
@@ -14,16 +16,19 @@ export default function HomePage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const data = await getHomeData();
-      setFeaturedMovie(data.featured);
-      setCategories(data.categories);
-      setLoading(false);
-    };
-    loadData();
-  }, []); 
+  useFocusEffect(
+    useCallback(() => {
+      const loadData = async () => {
+        setLoading(true);
+        const data = await getHomeData();
+        setFeaturedMovie(data.featured);
+        setCategories(data.categories);
+        setLoading(false);
+      };
+
+      loadData();
+    }, [])
+  );
 
     const handleMoviePress = (movie: Movie) => {
   if (movie.tmdb_id) {

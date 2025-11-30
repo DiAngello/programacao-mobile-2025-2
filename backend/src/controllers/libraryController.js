@@ -3,10 +3,10 @@ const { Op } = require('sequelize');
 
 class LibraryController {
 
-  createMovieIfNotExists = async ({ imdb_id, tmdb_id, title, poster_url, publicRating }) => {
+  createMovieIfNotExists = async ({ imdb_id, tmdb_id, title, poster_url, public_rating }) => {
     let movie = await Movie.findOne({ where: { imdb_id } });
     if (!movie) {
-      movie = await Movie.create({ imdb_id, tmdb_id, title, poster_url, publicRating });
+      movie = await Movie.create({ imdb_id, tmdb_id, title, poster_url, public_rating });
     }
     return movie;
   }
@@ -39,7 +39,7 @@ class LibraryController {
 
   async upsertMovie(req, res) {
   const userId = req.userId;
-  const { imdb_id, tmdb_id, title, poster_url, status, rating, notes } = req.body;
+  const { imdb_id, tmdb_id, title, poster_url, status, rating, notes, public_rating } = req.body;
 
   if (!imdb_id || !status) {
     return res.status(400).json({ error: 'imdb_id e status são obrigatórios.' });
@@ -48,8 +48,13 @@ class LibraryController {
   try {
     const [movie] = await Movie.findOrCreate({
       where: { imdb_id },
-      defaults: { imdb_id, tmdb_id, title, poster_url }
+      defaults: { imdb_id, tmdb_id, title, poster_url, public_rating }
     });
+
+    if (movie.public_rating !== public_rating) {
+      movie.public_rating = public_rating;
+      await movie.save();
+    }
 
     const [entry] = await UserMovie.upsert(
       {
@@ -101,7 +106,7 @@ class LibraryController {
         where: { user_id: userId, watched: true },
         include: [{
           model: Movie,
-          attributes: ['imdb_id', 'title', 'poster_url', 'publicRating']
+          attributes: ['imdb_id', 'title', 'poster_url', 'public_rating']
         }],
         attributes: ['rating', 'notes'] // <-- adicionado
       });
@@ -125,7 +130,7 @@ class LibraryController {
         where: { user_id: userId, on_wishlist: true },
         include: [{
           model: Movie,
-          attributes: ['imdb_id', 'title', 'poster_url', 'publicRating']
+          attributes: ['imdb_id', 'title', 'poster_url', 'public_rating']
         }]
       });
 
@@ -165,7 +170,7 @@ class LibraryController {
         include: [{
           model: Movie,
           where: { title: { [Op.iLike]: `%${q}%` } },
-          attributes: ['imdb_id', 'title', 'poster_url', 'publicRating']
+          attributes: ['imdb_id', 'title', 'poster_url', 'public_rating']
         }]
       });
 
