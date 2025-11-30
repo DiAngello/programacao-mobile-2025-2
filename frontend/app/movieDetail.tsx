@@ -25,7 +25,9 @@ import {
   getLibraryEntry,
   getMovieByIMDbId,
   upsertMovieToLibrary,
+  removeMovieFromLibrary
 } from '../services/movieService';
+
 import AppTextInput from '../components/appTextInput';
 import AppButton from '../components/appButton';
 import StarRating from '../components/starRating';
@@ -93,25 +95,32 @@ export default function MovieDetailPage() {
     load();
   }, [movieId, imdbId]);
 
-  const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
+const handleLibraryAction = async (action: 'wishlist' | 'watched') => {
     if (!movie) return;
-
     setIsSubmitting(true);
+
     try {
-      
-      const response = await upsertMovieToLibrary(
-        movie as unknown as Movie, 
+      const imdb = movie.external_ids?.imdb_id;
+      if (!imdb) return;
+
+      if ((action === 'wishlist' && isWishlisted) || (action === 'watched' && isWatched)) {
+        await removeMovieFromLibrary(imdb);
+        setIsWishlisted(false);
+        setIsWatched(false);
+        return;
+      }
+
+      await upsertMovieToLibrary(
+        movie,
         action,
-        userRating,
-        userNotes
+        action === 'watched' ? userRating : undefined,
+        action === 'watched' ? userNotes : undefined
       );
 
-      setIsWishlisted(response.on_wishlist);
-      setIsWatched(response.watched);
-      setUserRating(response.rating || 0);
-      setUserNotes(response.notes || '');
-      setIsReviewSaved(!!response.rating || !!response.notes);
-      if (action === 'watched') setIsEditingReview(false);
+      setIsWishlisted(action === 'wishlist');
+      setIsWatched(action === 'watched');
+    } catch (error) {
+      console.error('Erro ao atualizar biblioteca:', error);
     } finally {
       setIsSubmitting(false);
     }

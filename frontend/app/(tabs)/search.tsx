@@ -100,5 +100,4 @@ const styles = StyleSheet.create({
   row: { justifyContent: 'space-between' },
   emptyContainer: { flex: 1, paddingTop: 50, alignItems: 'center' },
   messageText: { color: COLORS.textSecondary, textAlign: 'center', fontSize: 16 },
-  // Estilos de filtro removidos
 });

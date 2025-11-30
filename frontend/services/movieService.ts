@@ -89,12 +89,15 @@ export const getGenres = async (): Promise<Genre[]> => {
 
 export const getMoviesByCategory = async (genreId: string): Promise<Movie[]> => {
   try {
-    const response = await api.get('/movies/discover', { params: { genreId } });
+    const response = await api.get('/movies/discover', {
+      params: { genreId }
+    });
     return response.data.map(mapTMDbMovie);
-  } catch {
+  } catch (err) {
+    console.error('Erro ao buscar filmes por categoria:', err);
     return [];
   }
-};
+};  
 
 export const getMovieByIMDbId = async (imdbId: string): Promise<Movie | null> => {
   try {
@@ -134,7 +137,7 @@ export const getWishlistMovies = async (): Promise<Movie[]> => {
 
 export async function upsertMovieToLibrary(
   movie: any,
-  status: 'wishlist' | 'watched',
+  action: 'wishlist' | 'watched',
   rating?: number,
   notes?: string
 ) {
@@ -144,24 +147,31 @@ export async function upsertMovieToLibrary(
 
     const payload = {
       imdb_id: imdb,
-      tmdb_id: movie.id?.toString(),
-      title: movie.title,
-      poster_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
-      status,
-      genres: movie.genres?.map((g: any) => g.name).join(', '),  
-      actors: movie.credits?.cast?.slice(0,5).map((a: any) => a.name).join(', '),
-      director: movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name,
-      rating,
-      notes,
-      public_rating: movie.vote_average
-        ? Number(movie.vote_average).toFixed(1)
-        : null
+      status: action, 
+      rating: action === 'watched' ? rating || 0 : undefined,
+      notes: action === 'watched' ? notes || '' : undefined,
+      title: movie.title || '',
+      poster_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+      genres: movie.genres?.map((g: any) => g.name).join(', ') || '',
+      actors: movie.credits?.cast?.slice(0, 5).map((a: any) => a.name).join(', ') || '',
+      director: movie.credits?.crew?.find((c: any) => c.job === 'Director')?.name || '',
+      public_rating: movie.vote_average ? Number(movie.vote_average.toFixed(1)) : undefined
     };
 
+    console.log('Payload enviado:', JSON.stringify(payload, null, 2));
+
     const response = await api.post('/library/upsert', payload);
-    return response.data; 
-  } catch (error) {
-    console.error('Erro ao salvar filme na biblioteca:', error);
+    return response.data;
+  } catch (error: any) {
+    if (error.isAxiosError) {
+      console.log('Erro ao salvar filme:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    } else {
+      console.error(error);
+    }
     throw error;
   }
 }
@@ -177,5 +187,19 @@ export const getLibraryEntry = async (imdbId: string) => {
     return response.data;
   } catch {
     return null;
+  }
+};
+
+export const searchMoviesByCategory = async (genreId: string, query: string): Promise<Movie[]> => {
+  try {
+    if (!query) return getMoviesByCategory(genreId);
+
+    const response = await api.get('/movies/search_by_category', {
+      params: { genreId, query }
+    });
+    return response.data.map(mapTMDbMovie);
+  } catch (err) {
+    console.error('Erro ao buscar filmes na categoria:', err);
+    return [];
   }
 };

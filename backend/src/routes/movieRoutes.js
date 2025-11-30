@@ -14,5 +14,7 @@ router.get('/imdb/:imdb_id', tmdbController.getByImdbId);
 router.get('/details/:tmdb_id', tmdbController.getDetails);
 router.get('/search', movieController.search);
 router.get('/:imdb_id', movieController.getDetails);
+router.get('/movies/search_by_category', movieController.searchByCategory);
+
 
 module.exports = router;

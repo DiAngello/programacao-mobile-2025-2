@@ -47,16 +47,41 @@ class TmdbController {
   }
 
   async getDetails(req, res) {
-    const { tmdb_id } = req.params;
-    try {
-      const response = await tmdbApi.get(`/movie/${tmdb_id}`, {
-        params: { append_to_response: 'external_ids' }
-      });
-      return res.json(response.data);
-    } catch (error) {
-      return res.status(502).json({ error: 'Erro ao buscar detalhes no TMDb.' });
+  const { tmdb_id } = req.params;
+
+  try {
+    const response = await tmdbApi.get(`/movie/${tmdb_id}`, {
+      params: { append_to_response: 'external_ids,credits' }
+    });
+
+    const movie = response.data;
+    const imdb_id = movie.external_ids?.imdb_id || null;
+
+    let relation = null;
+    if (req.userId && imdb_id) {
+      try {
+        relation = await UserMovie.findOne({
+          where: { user_id: req.userId, movie_id: imdb_id }
+        });
+      } catch (err) {
+        console.warn('Erro ao buscar relação UserMovie:', err.message);
+      }
     }
+
+    return res.json({
+      ...movie,
+      watched: relation?.watched || false,
+      on_wishlist: relation?.on_wishlist || false
+    });
+
+  } catch (error) {
+    console.error('Erro getDetails:', error.response?.data || error.message);
+    if (error.response?.status === 404) {
+      return res.status(404).json({ error: 'Filme não encontrado no TMDb.' });
+    }
+    return res.status(502).json({ error: 'Erro ao buscar detalhes no TMDb.' });
   }
+}
 
   async getGenres(req, res) {
     try {
