@@ -5,6 +5,14 @@ O objetivo é permitir que usuários pesquisem filmes, organizem suas listas de 
 
 ---
 
+## Integrantes
+
+- Ana Luisa da Penha Matos - UC22102745
+- Andressa Gabrielly Araújo de Souza - UC22102039
+- Pedro Lucas Neves Lopes - UC22100559
+
+---
+
 ## Objetivos do Projeto
 - Fornecer uma biblioteca de filmes personalizada para cada usuário.  
 - Integrar informações oficiais de filmes (título, nota, sinopse, elenco) via IMDb API.  
